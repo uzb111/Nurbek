@@ -343,15 +343,14 @@ function applyStoredCropAssignments(features) {
 
 function updateManualCropControls(properties = null) {
   const select = document.querySelector("#manual-crop-select");
-  const button = document.querySelector("#assign-crop");
   const splitButton = document.querySelector("#toolbar-start-split");
   const label = document.querySelector("#manual-crop-selected-field");
   if (!properties) {
-    select.value = ""; button.disabled = true; splitButton.disabled = true; label.textContent = "Avval xaritadan dalani tanlang";
+    select.value = ""; select.disabled = true; splitButton.disabled = true; label.textContent = "Avval xaritadan dalani tanlang";
     return;
   }
   select.value = properties.crop_group_mvp || "";
-  button.disabled = false;
+  select.disabled = false;
   splitButton.disabled = false;
   const selectionName = properties.split_status === "scenario" ? `Qism ${properties.split_part}` : `Dala ${String(properties.field_id || properties.feature_id).slice(0, 8)}`;
   label.textContent = `${selectionName} · ${fmtDec.format(number(properties.maydoni))} ga`;
@@ -457,6 +456,65 @@ function cropRecommendations(properties) {
     const score = Math.round(waterScore * .45 + soilScore * .30 + mechanicalScore * .15 + climateScore * .10);
     return { group: rule.crop_group, name: CROP_LABELS[rule.crop_group] || rule.crop_group, norm, waterScore, score, minBonitet: profile.minBonitet };
   }).sort((a, b) => b.score - a.score).slice(0, 3);
+}
+
+function recommendedCropForField(properties) {
+  if (!districtBalance || !irrigationRules.length) return null;
+  const components = properties.soil_gmr_components?.length ? properties.soil_gmr_components : [{
+    area_ha: number(properties.maydoni), gmr: properties.gmr_mvp, bonitet: properties.bonitet,
+    tm1: properties.Tm1, zone: properties.irrigation_zone,
+  }];
+  const area = sum(components, (component) => component.area_ha) || number(properties.maydoni);
+  if (!area) return null;
+  const availableM3Ha = currentDistrictUsedM3() / districtBalance.field_totals.area_ha;
+  const hot = currentWeather ? weatherStats(currentWeather).maxTemperature >= 40 : false;
+  return PNG_CROP_ORDER.map((group) => {
+    const profile = CROP_PROFILES[group] || { minBonitet: 50, textures: [3, 4], heat: 75 };
+    const calculated = components.map((component) => {
+      const match = nearestComponentRule({ ...component, zone: component.zone || properties.irrigation_zone }, group);
+      return { component, norm: number(match?.rule?.seasonal_norm_m3ha), matched: Boolean(match?.rule) };
+    });
+    if (!calculated.every((item) => item.matched)) return null;
+    const need = sum(calculated, (item) => number(item.component.area_ha) * item.norm);
+    const norm = need / area;
+    const soilScore = sum(calculated, (item) => number(item.component.area_ha) * soilSuitability(number(item.component.bonitet) || number(properties.bonitet), profile.minBonitet)) / area;
+    const mechanicalScore = sum(calculated, (item) => number(item.component.area_ha) * textureScore(number(item.component.tm1) || number(properties.Tm1), profile.textures)) / area;
+    const waterScore = Math.min(100, percent(availableM3Ha, norm));
+    const climateScore = hot ? profile.heat : 85;
+    return { group, score: Math.round(waterScore * .45 + soilScore * .30 + mechanicalScore * .15 + climateScore * .10), norm, waterScore };
+  }).filter(Boolean).sort((first, second) => second.score - first.score)[0] || null;
+}
+
+function applyCropRecommendations() {
+  if (!fullData || !districtBalance || !irrigationRules.length) {
+    document.querySelector("#map-hint").textContent = "Tavsiya uchun dala, suv balansi va PNG qoidalari yuklanishi kutilmoqda.";
+    return;
+  }
+  const counts = new Map();
+  fullData.features.forEach((feature) => {
+    const recommendation = recommendedCropForField(feature.properties);
+    if (!recommendation) return;
+    applyManualCrop(feature.properties, recommendation.group);
+    feature.properties.crop_mvp_source = "system_recommendation";
+    feature.properties.crop_mvp_confidence = recommendation.score;
+    counts.set(recommendation.group, (counts.get(recommendation.group) || 0) + 1);
+  });
+  splitState.parts.forEach((feature) => {
+    const recommendation = recommendedCropForField(feature.properties);
+    if (!recommendation) return;
+    feature.properties.crop_group_mvp = recommendation.group;
+    applySplitCropRule(feature);
+    feature.properties.crop_mvp_source = "system_recommendation";
+    feature.properties.crop_mvp_confidence = recommendation.score;
+  });
+  geoLayer?.setStyle(styleFor);
+  if (splitState.parts.length) renderSplitLayer();
+  if (selectedFeature) {
+    const replacement = selectedFeature.properties.split_status === "scenario" ? splitLayerForField(selectedFeature.properties.field_id) : selectedLayer;
+    if (replacement) selectField(selectedFeature, replacement);
+  }
+  const summary = [...counts.entries()].sort((first, second) => second[1] - first[1]).slice(0, 3).map(([group, count]) => `${CROP_LABELS[group]} — ${fmtInt.format(count)}`).join(", ");
+  document.querySelector("#map-hint").textContent = `Tavsiya tayyor: ${fmtInt.format(sum(fullData.features, () => 1))} dala hisoblandi. Yetakchi tavsiyalar: ${summary}.`;
 }
 
 function renderFieldDecision(properties) {
@@ -1122,6 +1180,7 @@ function renderRouteReport(properties) {
 function sourceLabel(value) {
   if (value === "observed") return "manba";
   if (value === "manual_user") return "qo‘lda kiritildi";
+  if (value === "system_recommendation") return "tizim tavsiyasi";
   if (value === "manual_required") return "kiritilmagan";
   return "yaqin dala taxmini";
 }
@@ -1208,7 +1267,7 @@ function selectField(feature, layer) {
     document.querySelector("#field-weather-formula").textContent = p.crop_group_mvp ? "Open-Meteo ma’lumoti kutilmoqda" : "Ekin kiritilgach ET0 × Kc formulasi hisoblanadi";
     document.querySelector("#field-conclusion").textContent = p.crop_group_mvp ? "Ob-havo ma’lumoti kelgach 7 kunlik baho hisoblanadi." : "Hozir dala bo‘sh. Yuqoridan 7 ekindan birini tanlang.";
   }
-  document.querySelector("#field-note").textContent = p.crop_group_mvp ? `Ekin — qo‘lda kiritildi. Formula dala ichidagi ${p.soil_gmr_components?.length || 1} ta real tuproq/GMR qismi maydonlarini alohida hisoblaydi.` : "Dala geometriyasi va tuproq/GMR tarkibi manbadan olindi; ekin ataylab bo‘sh qoldirilgan va faqat qo‘lda kiritiladi.";
+  document.querySelector("#field-note").textContent = p.crop_group_mvp ? `${p.crop_mvp_source === "system_recommendation" ? "Ekin tizim tavsiyasi bilan belgilandi" : "Ekin qo‘lda kiritildi"}. Formula dala ichidagi ${p.soil_gmr_components?.length || 1} ta real tuproq/GMR qismi maydonlarini alohida hisoblaydi.` : "Dala geometriyasi va tuproq/GMR tarkibi manbadan olindi; ekin ataylab bo‘sh qoldirilgan va faqat qo‘lda kiritiladi.";
   renderFieldDecision(p);
   renderRouteReport(p);
 }
@@ -1336,7 +1395,8 @@ document.querySelector("#start-split").addEventListener("click", startSplitMode)
 document.querySelector("#toolbar-start-split").addEventListener("click", startSplitMode);
 document.querySelector("#cancel-split").addEventListener("click", () => cancelSplit());
 document.querySelector("#export-split").addEventListener("click", exportSplitGeoJSON);
-document.querySelector("#assign-crop").addEventListener("click", assignCropToSelectedField);
+document.querySelector("#manual-crop-select").addEventListener("change", assignCropToSelectedField);
+document.querySelector("#recommend-crops").addEventListener("click", applyCropRecommendations);
 loadManualCropAssignments();
 const initialView = new URLSearchParams(window.location.search).get("view");
 if (initialView === "map" || initialView === "water-balance") showView(initialView);

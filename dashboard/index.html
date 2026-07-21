@@ -6,7 +6,7 @@
     <title>AgroTahlil — Yer va suv tahlili</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2317663b'/%3E%3Cpath d='M16 42C26 39 37 29 45 15c3 19-7 31-23 34M18 47c7-11 14-17 24-23' fill='none' stroke='%23fff' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="./styles.css?v=20260721-split3" />
+    <link rel="stylesheet" href="./styles.css?v=20260721-recommend6" />
   </head>
   <body>
     <div class="app-shell">
@@ -169,10 +169,10 @@
                 <div class="legend" id="map-legend"><span><i class="legend-dot" style="background:#809087"></i> Ekin kiritilmagan</span><span><i class="legend-dot water-good"></i> Hisob yetarli</span><span><i class="legend-dot water-short"></i> Suv tanqis</span></div>
               </div>
               <div class="map-toolbar">
-                <div class="crop-assign-intro"><span class="eyebrow">QO‘LDA EKIN KIRITISH</span><strong id="manual-crop-selected-field">Avval xaritadan dalani tanlang</strong><small>Barcha dalalar dastlab bo‘sh. Tanlangan ekin shu brauzerda saqlanadi va formula qayta hisoblanadi.</small></div>
+                <div class="crop-assign-intro"><span class="eyebrow">QO‘LDA EKIN KIRITISH</span><strong id="manual-crop-selected-field">Avval xaritadan dalani tanlang</strong><small>Ekinni tanlashingiz bilan formula darhol yangilanadi. Tavsiya faqat joriy sessiya uchun hisoblanadi.</small></div>
                 <button class="toolbar-split-button" id="toolbar-start-split" type="button" disabled><span>1</span> Dalani split qilish<small>2 nuqta bilan kesish</small></button>
-                <label class="crop-assign-select"><span>Ekin</span><select id="manual-crop-select" aria-label="Tanlangan dala ekini"><option value="">Bo‘sh — ekin kiritilmagan</option><option value="cotton">Paxta</option><option value="alfalfa">Beda</option><option value="maize">Makkajo‘xori</option><option value="vegetables">Sabzavot</option><option value="melons">Poliz</option><option value="orchard">Bog‘</option><option value="winter_grain">Bug‘doy</option></select></label>
-                <button class="crop-assign-button" id="assign-crop" type="button" disabled>Tanlangan dalaga qo‘llash</button>
+                <label class="crop-assign-select"><span>Ekin</span><select id="manual-crop-select" aria-label="Tanlangan dala ekini" disabled><option value="">Bo‘sh — ekin kiritilmagan</option><option value="cotton">Paxta</option><option value="alfalfa">Beda</option><option value="maize">Makkajo‘xori</option><option value="vegetables">Sabzavot</option><option value="melons">Poliz</option><option value="orchard">Bog‘</option><option value="winter_grain">Bug‘doy</option></select></label>
+                <button class="recommend-button" id="recommend-crops" type="button"><span>✦</span> Tavsiya<small>Barcha dalaga hisoblash</small></button>
               </div>
               <div class="map-wrap"><div id="map"></div><div class="map-loading" id="map-loading"><div class="spinner"></div><p>Dala geometriyasi yuklanmoqda…</p></div><div class="map-hint" id="map-hint">Poligon ustiga bosing — dala pasporti ochiladi</div></div>
               </div>
@@ -243,6 +243,6 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="./app.js?v=20260721-split5"></script>
+    <script src="./app.js?v=20260721-recommend6"></script>
   </body>
 </html>
