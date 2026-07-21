@@ -6,7 +6,7 @@
     <title>AgroTahlil — Yer va suv tahlili</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2317663b'/%3E%3Cpath d='M16 42C26 39 37 29 45 15c3 19-7 31-23 34M18 47c7-11 14-17 24-23' fill='none' stroke='%23fff' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="./styles.css?v=20260721-network2" />
+    <link rel="stylesheet" href="./styles.css?v=20260721-manual1" />
   </head>
   <body>
     <div class="app-shell">
@@ -166,31 +166,26 @@
               <div class="map-card card">
               <div class="card-heading">
                 <div><span class="eyebrow">INTERAKTIV XARITA</span><h2>Dalalar holati</h2></div>
-                <div class="legend" id="map-legend"><span><i class="legend-dot water-good"></i> Yetarli</span><span><i class="legend-dot water-limited"></i> Cheklangan</span><span><i class="legend-dot water-short"></i> Tanqis</span><span><i class="legend-dot water-severe"></i> Jiddiy tanqis</span></div>
+                <div class="legend" id="map-legend"><span><i class="legend-dot" style="background:#809087"></i> Ekin kiritilmagan</span><span><i class="legend-dot water-good"></i> Hisob yetarli</span><span><i class="legend-dot water-short"></i> Suv tanqis</span></div>
               </div>
               <div class="map-toolbar">
-                <label class="search-field"><span>⌕</span><input id="field-search" type="search" placeholder="field_id yoki ekin bo‘yicha qidiring" /></label>
-                <select id="crop-filter" aria-label="Ekin filtri"><option value="all">Barcha ekinlar</option></select>
-                <select id="status-filter" aria-label="Hisob holati filtri"><option value="all">Barcha holatlar</option><option value="demo_ready_observed">Manba asosidagi hisob</option><option value="demo_ready_proxy">Taxminiy hisob</option></select>
-                <select id="zone-filter" aria-label="Sug‘orish zonasi filtri"><option value="all">Barcha zonalar</option><option value="boz">Bo‘z zona</option><option value="chol">Cho‘l zonasi</option></select>
-                <select id="gmr-filter" aria-label="GMR filtri"><option value="all">Barcha GMR</option></select>
-                <select id="area-filter" aria-label="Maydon filtri"><option value="all">Barcha maydonlar</option><option value="under1">1 ga gacha</option><option value="1to5">1–5 ga</option><option value="5to20">5–20 ga</option><option value="over20">20 ga va katta</option></select>
-                <select id="confidence-filter" aria-label="Ishonchlilik filtri"><option value="all">Barcha ishonchlilik</option><option value="high">Yuqori: 80–100%</option><option value="medium">O‘rta: 50–79%</option><option value="low">Past: 0–49%</option></select>
-                <select id="water-filter" aria-label="Suv holati filtri"><option value="all">Barcha suv holatlari</option><option value="sufficient">Suv yetarli</option><option value="limited">Suv cheklangan</option><option value="shortage">Suv tanqis</option><option value="severe">Jiddiy tanqis</option></select>
-                <select id="map-metric" aria-label="Xarita ranglash usuli"><option value="water">Rang: suv holati</option><option value="source">Rang: ma’lumot manbasi</option></select>
-                <button class="filter-reset" id="filter-reset" type="button">Filtrlarni tozalash</button>
+                <div class="crop-assign-intro"><span class="eyebrow">QO‘LDA EKIN KIRITISH</span><strong id="manual-crop-selected-field">Avval xaritadan dalani tanlang</strong><small>Barcha dalalar dastlab bo‘sh. Tanlangan ekin shu brauzerda saqlanadi va formula qayta hisoblanadi.</small></div>
+                <label class="crop-assign-select"><span>Ekin</span><select id="manual-crop-select" aria-label="Tanlangan dala ekini"><option value="">Bo‘sh — ekin kiritilmagan</option><option value="cotton">Paxta</option><option value="alfalfa">Beda</option><option value="maize">Makkajo‘xori</option><option value="vegetables">Sabzavot</option><option value="melons">Poliz</option><option value="orchard">Bog‘</option><option value="winter_grain">Bug‘doy</option></select></label>
+                <button class="crop-assign-button" id="assign-crop" type="button" disabled>Tanlangan dalaga qo‘llash</button>
               </div>
               <div class="map-wrap"><div id="map"></div><div class="map-loading" id="map-loading"><div class="spinner"></div><p>Dala geometriyasi yuklanmoqda…</p></div><div class="map-hint" id="map-hint">Poligon ustiga bosing — dala pasporti ochiladi</div></div>
               </div>
 
               <section class="route-report card" id="route-report">
-                <div class="card-heading compact"><div><span class="eyebrow">TANLANGAN DALA SUV YO‘LI</span><h2 id="route-report-title">Poligonni tanlang</h2><p id="route-report-subtitle">Qaysi quloqdan suv olishi va dala kirishiga yetgan suv shu yerda ko‘rinadi.</p></div></div>
+                <div class="card-heading compact"><div><span class="eyebrow">TANLANGAN DALA SUV YO‘LI</span><h2 id="route-report-title">Dalani tanlang</h2><p id="route-report-subtitle">Tarmoq darajalari, yakuniy quloq va undan dalaga hisobiy yetgan suv shu yerda ko‘rinadi.</p></div></div>
                 <div class="route-report-empty" id="route-report-empty">Xaritadan poligon tanlang — line chart shu yerda ochiladi.</div>
                 <div id="route-report-data" hidden>
                   <div class="route-metrics" id="route-metrics"></div>
-                  <div class="route-chart-legend"><span><i class="limit-line"></i> Hisobiy dala limiti</span><span><i class="delivery-line"></i> Yetib kelayotgan suv</span><span><i class="polygon-line"></i> Tarmoqdagi poligonlar</span><span><i class="outlet-line"></i> Tarmoqdagi quloqlar</span></div>
+                  <div class="route-explanation" id="route-explanation"></div>
+                  <div class="route-chart-legend"><span><i class="limit-line"></i> Hisobiy dala limiti</span><span><i class="delivery-line"></i> Quloqdan dalaga hisobiy suv</span><span><i class="polygon-line"></i> Shu yo‘nalishda qolgan dalalar</span><span><i class="outlet-line"></i> Quyi yakuniy quloqlar</span></div>
                   <div class="route-chart" id="route-chart"></div>
-                  <p class="route-disclaimer">Binafsha chiziq — tuman rasmiy limitidan dala talabiga mutanosib ajratilgan hisobiy ulush; bu dalaga alohida tasdiqlangan rasmiy limit emas. Ko‘k chiziq shu suvning yakuniy quloqqacha kamayishini ko‘rsatadi. Quloq raqami blok kodi oxiridan olinadi; yo‘qotish 1,5%/bosqich ssenariysi asosida.</p>
+                  <div class="route-stage-list" id="route-stage-list"></div>
+                  <p class="route-disclaimer">Binafsha chiziq — tuman limitidan dala talabiga mutanosib hisobiy ulush. Ko‘k chiziq yakuniy quloqqacha ssenariy kamayishini ko‘rsatadi. Fizik dala kirish darvozasi yoki ichki ariq geometriyasi manbada yo‘q; shu sabab ko‘rsatilgan hajm o‘lchangan kirish emas, yakuniy quloqdan dalaga ajratilgan hisobiy hajmdir.</p>
                 </div>
               </section>
             </div>
@@ -201,11 +196,12 @@
               <div id="field-details" hidden>
                 <div class="field-score-row"><div class="confidence-ring" id="confidence-ring"><span id="field-confidence">—</span><small>%</small></div><div><span class="field-meta-label">ZONA ISHONCHLILIGI</span><strong id="field-zone">—</strong><p id="field-zone-note">—</p></div></div>
                 <dl class="facts-grid"><div><dt>Ekin</dt><dd id="field-crop">—</dd></div><div><dt>Maydon</dt><dd id="field-area">—</dd></div><div><dt>GMR</dt><dd id="field-gmr">—</dd></div><div><dt>Tuproq boniteti</dt><dd id="field-bonitet">—</dd></div></dl>
+                <section class="soil-composition-card"><div class="section-label-row"><span class="eyebrow">DALA ICHIDAGI TUPROQ VA GMR QISMLARI</span><span class="mini-status" id="field-source-parts">—</span></div><div class="soil-component-list" id="field-soil-components"></div></section>
                 <section class="water-plan"><div class="section-label-row"><span class="eyebrow">MAVSUMIY SUV REJASI</span><span id="field-norm-status" class="mini-status">—</span></div><strong class="water-total" id="field-water">—</strong><span class="water-unit">m³ mavsum uchun</span><div class="water-breakdown"><div><span>Norma</span><strong id="field-norm">—</strong></div><div><span>Sug‘orishlar</span><strong id="field-count">—</strong></div><div><span>Muddat</span><strong id="field-window">—</strong></div></div><code class="formula-line" id="field-season-formula">—</code></section>
                 <section class="delivery-plan" id="field-delivery-plan" hidden>
                   <div class="section-label-row"><span class="eyebrow">KANAL ORQALI SUV YETKAZISH HISOBI</span><span class="mini-status">Ssenariy</span></div>
                   <p class="delivery-route" id="field-delivery-route">—</p>
-                  <div class="water-breakdown"><div><span>Rasmiy limitdan ulush</span><strong id="field-source-share">—</strong></div><div><span>Yo‘l yo‘qotishi</span><strong id="field-route-loss">—</strong></div><div><span>Dala kirishida</span><strong id="field-delivery-water">—</strong></div></div>
+                  <div class="water-breakdown"><div><span>Rasmiy limitdan ulush</span><strong id="field-source-share">—</strong></div><div><span>Yo‘l yo‘qotishi</span><strong id="field-route-loss">—</strong></div><div><span>Yakuniy quloqdan dalaga</span><strong id="field-delivery-water">—</strong></div></div>
                   <code class="formula-line" id="field-delivery-formula">—</code>
                   <p class="delivery-note" id="field-delivery-note">—</p>
                 </section>
@@ -246,6 +242,6 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="./app.js?v=20260721-network2"></script>
+    <script src="./app.js?v=20260721-manual1"></script>
   </body>
 </html>

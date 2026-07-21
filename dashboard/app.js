@@ -1,5 +1,5 @@
 const SUMMARY_URL = "../mvp_data/dashboard_summary.json";
-const DATA_URL = "../mvp_data/geojson/fields_delivery_2025_lite.geojson";
+const DATA_URL = "../mvp_data/geojson/fields_merged_manual.geojson";
 const WEATHER_SNAPSHOT_URL = "../mvp_data/open_meteo_weather.json";
 const WEATHER_API_URL = "/api/open-meteo";
 const DISTRICT_BALANCE_URL = "../mvp_data/district_water_balance.json";
@@ -17,8 +17,9 @@ const STATUS_META = {
   demo_ready_observed: { label: "Manba asosidagi hisob", color: "#17663b", className: "ready" },
   demo_ready_proxy: { label: "Taxminiy hisob", color: "#d88917", className: "provisional" },
   demo_norm_unavailable: { label: "Norma topilmadi", color: "#c95343", className: "incomplete" },
+  crop_required: { label: "Ekin kiritilmagan", color: "#708078", className: "neutral" },
 };
-const MAP_STATUS_COLORS = { demo_ready_observed: "#00c96b", demo_ready_proxy: "#ffb000", demo_norm_unavailable: "#ff375f" };
+const MAP_STATUS_COLORS = { demo_ready_observed: "#00c96b", demo_ready_proxy: "#ffb000", demo_norm_unavailable: "#ff375f", crop_required: "#809087" };
 const WATER_STATUS_META = {
   sufficient: { label: "Suv yetarli", color: "#00c96b", className: "" },
   limited: { label: "Suv cheklangan", color: "#f4c430", className: "limited" },
@@ -29,6 +30,7 @@ const CROP_COEFFICIENT = { cotton: 1.15, winter_grain: 1.05, alfalfa: 1.10, maiz
 const GROUNDWATER_FACTOR = { I: 0.16, II: 0.14, III: 0.12, IV: 0.10, V: 0.08, VI: 0.06, IX: 0.04 };
 const CROP_LABELS = { cotton: "Paxta", winter_grain: "Bug‘doy", alfalfa: "Beda", maize: "Makkajo‘xori", orchard: "Bog‘", melons: "Poliz", vegetables: "Sabzavot" };
 const PNG_CROP_ORDER = ["cotton", "alfalfa", "maize", "vegetables", "melons", "orchard", "winter_grain"];
+const MANUAL_CROP_STORAGE_KEY = "agrotahlil-manual-crops-v1";
 const CROP_PROFILES = {
   cotton: { minBonitet: 55, textures: [3, 4, 5], heat: 92 }, winter_grain: { minBonitet: 40, textures: [2, 3, 4, 5], heat: 84 },
   alfalfa: { minBonitet: 50, textures: [3, 4, 5], heat: 76 }, maize: { minBonitet: 55, textures: [3, 4, 5], heat: 80 },
@@ -52,6 +54,7 @@ let networkGroups = {};
 let waterRouteIndex = new Map();
 let fieldGeometryIndex = [];
 let selectedNetworkLayer = null;
+let manualCropAssignments = {};
 const networkLoadState = new Set();
 const networkSpatialCache = new Map();
 
@@ -228,8 +231,8 @@ function updateWaterBalance() {
   document.querySelector("#balance-flow").innerHTML = rows.map(([label, value, className]) => `<div class="flow-row"><span>${label}</span><div class="flow-track"><div class="flow-fill ${className}" style="width:${value / maximum * 100}%"></div></div><strong>${balanceMillions(value)}</strong></div>`).join("");
   document.querySelector("#balance-conclusion").textContent = deficit > 0 ? `ET talabi bo‘yicha ${balanceMillions(deficit)} mln m³ suv defitsiti mavjud` : `Mavjud suv manbalari hisobiy ET talabini qoplaydi`;
   document.querySelector("#balance-equation").textContent = `ET sarfi = min(ETc ${balanceMillions(potentialEt)}, ishlatilgan ${balanceMillions(used)} + samarali yog‘in ${balanceMillions(rain)} + sizot ${balanceMillions(groundwater)}) = ${balanceMillions(actualEt)} mln m³. Ishlatilmagan limit: ${balanceMillions(unusedLimit)} mln m³.`;
-  if (geoLayer && document.querySelector("#map-metric").value === "water") geoLayer.setStyle(styleFor);
-  if (selectedFeature) renderFieldDecision(selectedFeature.properties);
+  if (geoLayer) geoLayer.setStyle(styleFor);
+  if (selectedFeature) { renderFieldDecision(selectedFeature.properties); renderRouteReport(selectedFeature.properties); }
 }
 
 function renderDistrictBalance(data) {
@@ -241,7 +244,7 @@ function renderDistrictBalance(data) {
   document.querySelector("#balance-crop-et").innerHTML = data.crop_groups.map((group) => `<div class="bar-row"><span>${cropLabels[group.group] || group.group}</span><div class="bar-track"><div class="bar-fill" style="width:${group.etc_m3 / maximum * 100}%"></div></div><span class="bar-value">${balanceMillions(group.etc_m3)}</span></div>`).join("");
   document.querySelector("#balance-excluded").textContent = `${fmtInt.format(data.field_totals.unassigned_polygons_excluded)} poligon (${fmtDec.format(data.field_totals.unassigned_area_ha_excluded)} ga) tuman kodi bo‘sh bo‘lgani uchun ushbu hisobga kiritilmadi.`;
   setBalanceInputs();
-  if (geoLayer && document.querySelector("#map-metric").value === "water") geoLayer.setStyle(styleFor);
+  if (geoLayer) geoLayer.setStyle(styleFor);
   if (!document.querySelector("#water-balance-view").hidden) document.querySelector("#data-status").textContent = `${data.district.name} · ${data.period.days} kun`;
 }
 
@@ -263,10 +266,107 @@ async function loadIrrigationRules() {
     const lines = (await response.text()).trim().split(/\r?\n/);
     const headers = lines.shift().split(",");
     irrigationRules = lines.map((line) => Object.fromEntries(line.split(",").map((value, index) => [headers[index], value])));
-    if (selectedFeature) renderFieldDecision(selectedFeature.properties);
+    if (fullData) {
+      applyStoredCropAssignments(fullData.features);
+      if (geoLayer) geoLayer.setStyle(styleFor);
+    }
+    if (selectedFeature) selectField(selectedFeature, selectedLayer);
   } catch (error) {
     console.error(error);
   }
+}
+
+function loadManualCropAssignments() {
+  try { manualCropAssignments = JSON.parse(localStorage.getItem(MANUAL_CROP_STORAGE_KEY) || "{}"); }
+  catch { manualCropAssignments = {}; }
+}
+
+function saveManualCropAssignments() {
+  localStorage.setItem(MANUAL_CROP_STORAGE_KEY, JSON.stringify(manualCropAssignments));
+}
+
+function nearestComponentRule(component, cropGroup) {
+  const exact = irrigationRules.find((rule) => rule.irrigation_zone === component.zone && rule.gmr === component.gmr && rule.crop_group === cropGroup);
+  if (exact) return { rule: exact, exact: true };
+  const order = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"];
+  const target = order.indexOf(component.gmr);
+  const candidates = irrigationRules.filter((rule) => rule.irrigation_zone === component.zone && rule.crop_group === cropGroup);
+  candidates.sort((first, second) => Math.abs(order.indexOf(first.gmr) - target) - Math.abs(order.indexOf(second.gmr) - target));
+  return candidates[0] ? { rule: candidates[0], exact: false } : null;
+}
+
+function clearFieldCrop(properties) {
+  Object.assign(properties, {
+    crop_group_mvp: null, crop_mvp: null, crop_mvp_source: "manual_required",
+    crop_mvp_confidence: null, norm_m3ha_mvp: null, planned_water_m3_mvp: null,
+    seasonal_need_m3: null, irrigation_count_mvp: null, irrigation_start_mvp: null,
+    irrigation_end_mvp: null, crop_norm_components: [], demo_norm_status: "crop_required",
+    delivery_calc_status: "crop_required", source_share_m3: null, route_loss_m3_scn: null,
+    delivery_est_m3: null, delivery_cover_pct: null,
+  });
+}
+
+function applyManualCrop(properties, cropGroup) {
+  if (!cropGroup || !PNG_CROP_ORDER.includes(cropGroup)) { clearFieldCrop(properties); return; }
+  const sourceComponents = properties.soil_gmr_components?.length ? properties.soil_gmr_components : [{
+    area_ha: number(properties.maydoni), gmr: properties.gmr_mvp, bonitet: properties.bonitet,
+    tm1: properties.Tm1, zone: properties.irrigation_zone,
+  }];
+  const calculated = sourceComponents.map((component) => {
+    const match = nearestComponentRule(component, cropGroup);
+    const norm = number(match?.rule?.seasonal_norm_m3ha);
+    return {
+      ...component, rule_gmr: match?.rule?.gmr || null, exact_rule: Boolean(match?.exact), norm_m3ha: norm,
+      water_m3: number(component.area_ha) * norm, irrigation_pattern: match?.rule?.irrigation_pattern || null,
+      start: match?.rule?.start_month_day || null, end: match?.rule?.end_month_day || null,
+      source: match?.rule?.source || null,
+    };
+  });
+  const totalNeed = sum(calculated, (component) => component.water_m3);
+  const patterns = [...new Set(calculated.map((component) => component.irrigation_pattern).filter(Boolean))];
+  const starts = calculated.map((component) => component.start).filter(Boolean).sort();
+  const ends = calculated.map((component) => component.end).filter(Boolean).sort();
+  Object.assign(properties, {
+    crop_group_mvp: cropGroup, crop_mvp: CROP_LABELS[cropGroup], crop_mvp_source: "manual_user",
+    crop_mvp_confidence: 100, crop_norm_components: calculated,
+    norm_m3ha_mvp: number(properties.maydoni) ? totalNeed / number(properties.maydoni) : null,
+    planned_water_m3_mvp: totalNeed, seasonal_need_m3: totalNeed,
+    irrigation_count_mvp: patterns.join(" / ") || null,
+    irrigation_start_mvp: starts[0] || null, irrigation_end_mvp: ends[ends.length - 1] || null,
+    norm_source: [...new Set(calculated.map((component) => component.source).filter(Boolean))].join("; "),
+    demo_norm_status: totalNeed ? "demo_ready_proxy" : "demo_norm_unavailable",
+    delivery_calc_status: totalNeed && properties.water_route ? "scenario_ready" : "norm_unavailable",
+  });
+}
+
+function applyStoredCropAssignments(features) {
+  features.forEach((feature) => applyManualCrop(feature.properties, manualCropAssignments[feature.properties.field_id] || ""));
+}
+
+function updateManualCropControls(properties = null) {
+  const select = document.querySelector("#manual-crop-select");
+  const button = document.querySelector("#assign-crop");
+  const label = document.querySelector("#manual-crop-selected-field");
+  if (!properties) {
+    select.value = ""; button.disabled = true; label.textContent = "Avval xaritadan dalani tanlang";
+    return;
+  }
+  select.value = properties.crop_group_mvp || "";
+  button.disabled = false;
+  label.textContent = `Dala ${String(properties.field_id || properties.feature_id).slice(0, 8)} · ${fmtDec.format(number(properties.maydoni))} ga`;
+}
+
+function assignCropToSelectedField() {
+  if (!selectedFeature) return;
+  const properties = selectedFeature.properties;
+  const cropGroup = document.querySelector("#manual-crop-select").value;
+  if (cropGroup) manualCropAssignments[properties.field_id] = cropGroup;
+  else delete manualCropAssignments[properties.field_id];
+  saveManualCropAssignments();
+  applyManualCrop(properties, cropGroup);
+  if (selectedLayer) selectedLayer.bindPopup(popupHtml(properties));
+  if (geoLayer) geoLayer.setStyle(styleFor);
+  selectField(selectedFeature, selectedLayer);
 }
 
 function currentDistrictUsedM3() {
@@ -352,17 +452,25 @@ function cropRecommendations(properties) {
 }
 
 function renderFieldDecision(properties) {
-  const water = fieldWaterAnalysis(properties);
-  const waterMeta = WATER_STATUS_META[water.key];
   const state = document.querySelector("#field-water-state");
-  state.textContent = waterMeta.label;
-  state.className = `water-state ${waterMeta.className}`;
-  document.querySelector("#field-water-coverage").textContent = `${fmtInt.format(water.coverage * 100)}%`;
   const bar = document.querySelector("#field-water-bar");
-  bar.style.width = `${Math.min(water.coverage * 100, 100)}%`;
-  bar.style.background = waterMeta.color;
-  document.querySelector("#field-water-reason").textContent = water.delivery ? `Sabab: rasmiy limitdan poligonning normativ ulushi ${fmtInt.format(water.delivery.sourceShare)} m³. Suv yo‘li ssenariysidagi ${fmtDec.format(water.delivery.lossPct)}% yo‘qotishdan keyin ${fmtInt.format(water.delivery.delivery)} m³ yetadi.` : `Sabab: tumandagi foydali suv ${fmtInt.format(water.availableM3Ha)} m³/ga, ushbu ekin uchun ET asosidagi sof talab ${fmtInt.format(water.demandM3Ha)} m³/ga. Samarali yog‘in ${fmtDec.format(water.rainMm)} mm, GMR bo‘yicha sizot hissasi ${fmtDec.format(water.groundwaterMm)} mm.`;
-  if (water.delivery && !document.querySelector("#field-delivery-plan").hidden) {
+  const water = properties.crop_group_mvp ? fieldWaterAnalysis(properties) : null;
+  if (!water) {
+    state.textContent = "Ekin tanlang";
+    state.className = "water-state limited";
+    document.querySelector("#field-water-coverage").textContent = "—";
+    bar.style.width = "0%";
+    document.querySelector("#field-water-reason").textContent = "Suv holati ekin, uning PNG normasi va dala ichidagi GMR qismlari hisoblangach chiqadi.";
+  } else {
+    const waterMeta = WATER_STATUS_META[water.key];
+    state.textContent = waterMeta.label;
+    state.className = `water-state ${waterMeta.className}`;
+    document.querySelector("#field-water-coverage").textContent = `${fmtInt.format(water.coverage * 100)}%`;
+    bar.style.width = `${Math.min(water.coverage * 100, 100)}%`;
+    bar.style.background = waterMeta.color;
+    document.querySelector("#field-water-reason").textContent = water.delivery ? `Sabab: rasmiy limitdan dalaning normativ ulushi ${fmtInt.format(water.delivery.sourceShare)} m³. Tarmoq darajalari ssenariysidagi ${fmtDec.format(water.delivery.lossPct)}% yo‘qotishdan keyin yakuniy quloqdan dalaga ${fmtInt.format(water.delivery.delivery)} m³ hisoblanadi.` : `Sabab: tumandagi foydali suv ${fmtInt.format(water.availableM3Ha)} m³/ga, ushbu ekin uchun ET asosidagi sof talab ${fmtInt.format(water.demandM3Ha)} m³/ga. Samarali yog‘in ${fmtDec.format(water.rainMm)} mm, GMR bo‘yicha sizot hissasi ${fmtDec.format(water.groundwaterMm)} mm.`;
+  }
+  if (water?.delivery && !document.querySelector("#field-delivery-plan").hidden) {
     document.querySelector("#field-source-share").textContent = `${fmtInt.format(water.delivery.sourceShare)} m³`;
     document.querySelector("#field-route-loss").textContent = `${fmtDec.format(water.delivery.lossPct)}% · ${fmtInt.format(water.delivery.lossM3)} m³`;
     document.querySelector("#field-delivery-water").textContent = `${fmtInt.format(water.delivery.delivery)} m³`;
@@ -383,7 +491,7 @@ function renderFieldDecision(properties) {
 }
 
 function splitCropOptions(selected) {
-  return PNG_CROP_ORDER.map((group) => `<option value="${group}" ${group === selected ? "selected" : ""}>${CROP_LABELS[group]}</option>`).join("");
+  return `<option value="" ${selected ? "" : "selected"}>Bo‘sh — ekin kiritilmagan</option>${PNG_CROP_ORDER.map((group) => `<option value="${group}" ${group === selected ? "selected" : ""}>${CROP_LABELS[group]}</option>`).join("")}`;
 }
 
 function splitGmrOptions(selected) {
@@ -466,7 +574,7 @@ function createSplitParts() {
       ...parent.properties, feature_id: id, field_id: id, parent_field_id: parentId,
       split_scenario_id: splitState.scenarioId, split_part: part, split_status: "scenario",
       maydoni: parentArea * rawAreas[index] / rawTotal, split_area_ha: parentArea * rawAreas[index] / rawTotal,
-      crop_group_mvp: PNG_CROP_ORDER.includes(parent.properties.crop_group_mvp) ? parent.properties.crop_group_mvp : PNG_CROP_ORDER[0],
+      crop_group_mvp: PNG_CROP_ORDER.includes(parent.properties.crop_group_mvp) ? parent.properties.crop_group_mvp : null,
     };
     return feature;
   });
@@ -486,7 +594,7 @@ function exactSplitRule(properties) {
 
 function applySplitCropRule(feature) {
   const properties = feature.properties;
-  properties.crop_mvp = CROP_LABELS[properties.crop_group_mvp] || properties.crop_mvp;
+  properties.crop_mvp = CROP_LABELS[properties.crop_group_mvp] || null;
   properties.crop_mvp_source = "split_user_selection";
   const rule = exactSplitRule(properties);
   if (!rule) {
@@ -520,7 +628,7 @@ function renderSplitLayer() {
       const water = fieldWaterAnalysis(feature.properties);
       return { color: feature.properties.split_part === "A" ? "#00e5ff" : "#ff4fd8", weight: 4, opacity: 1, fillColor: WATER_STATUS_META[water.key].color, fillOpacity: .82 };
     },
-    onEachFeature(feature, layer) { layer.bindTooltip(`Qism ${feature.properties.split_part} · ${fmtDec.format(feature.properties.maydoni)} ga · ${CROP_LABELS[feature.properties.crop_group_mvp]}`, { sticky: true }); },
+    onEachFeature(feature, layer) { layer.bindTooltip(`Qism ${feature.properties.split_part} · ${fmtDec.format(feature.properties.maydoni)} ga · ${CROP_LABELS[feature.properties.crop_group_mvp] || "Ekin kiritilmagan"}`, { sticky: true }); },
   }).addTo(map);
   splitState.layer.bringToFront();
   if (selectedLayer) selectedLayer.setStyle({ fillOpacity: .05, opacity: .35, dashArray: "5 5" });
@@ -647,14 +755,15 @@ function showView(view) {
 
 function styleFor(feature) {
   const meta = getMeta(feature.properties.demo_norm_status);
-  const metric = document.querySelector("#map-metric")?.value || "water";
-  const fillColor = metric === "water" && districtBalance ? WATER_STATUS_META[fieldWaterAnalysis(feature.properties).key].color : MAP_STATUS_COLORS[feature.properties.demo_norm_status] || meta.color;
+  const fillColor = !feature.properties.crop_group_mvp ? MAP_STATUS_COLORS.crop_required
+    : districtBalance ? WATER_STATUS_META[fieldWaterAnalysis(feature.properties).key].color
+      : MAP_STATUS_COLORS[feature.properties.demo_norm_status] || meta.color;
   return { color: "#ffffff", weight: 1.45, opacity: 1, fillColor, fillOpacity: feature.properties.demo_norm_status === "demo_ready_observed" ? .76 : .72 };
 }
 
 function popupHtml(properties) {
   const meta = getMeta(properties.demo_norm_status);
-  const water = districtBalance ? fieldWaterAnalysis(properties) : null;
+  const water = districtBalance && properties.crop_group_mvp ? fieldWaterAnalysis(properties) : null;
   const waterLine = water ? `<p class="popup-line" style="color:${WATER_STATUS_META[water.key].color}">${WATER_STATUS_META[water.key].label} · ${fmtInt.format(water.coverage * 100)}%</p>` : "";
   return `<h3 class="popup-title">${escapeHtml(text(properties.crop_mvp, "Ekin ko‘rsatilmagan"))}</h3><p class="popup-line">Maydon: <strong>${fmtDec.format(number(properties.maydoni))} ga</strong></p><p class="popup-line">GMR: <strong>${escapeHtml(text(properties.gmr_mvp))}</strong> · Zona: <strong>${escapeHtml(text(properties.irrigation_zone))}</strong></p>${waterLine}<p class="popup-line" style="color:${meta.color}">${meta.label}</p>`;
 }
@@ -698,7 +807,7 @@ function canalRouteStats(properties) {
     if (found.length) { matchKey = candidate; matches = found; break; }
   }
   if (!matches.length) return null;
-  const fields = new Set(), outlets = new Set(), sources = new Set(), parents = new Set();
+  const fields = new Set(), calculatedFields = new Set(), outlets = new Set(), sources = new Set(), parents = new Set();
   let sourceShare = 0, delivered = 0, loss = 0, terminalMatches = 0;
   matches.forEach((feature) => {
     const p = feature.properties;
@@ -709,10 +818,10 @@ function canalRouteStats(properties) {
     if (route.length) { sources.add(route[0]); outlets.add(route[route.length - 1]); }
     if (matchedIndex > 0) parents.add(route[matchedIndex - 1]);
     if (matchedIndex === route.length - 1) terminalMatches += 1;
-    if (scenario) { sourceShare += scenario.sourceShare; delivered += scenario.delivery; loss += scenario.lossM3; }
+    if (scenario) { calculatedFields.add(p.field_id || p.plan_part_id || p.feature_id); sourceShare += scenario.sourceShare; delivered += scenario.delivery; loss += scenario.lossM3; }
   });
   return {
-    matchKey, polygons: matches.length, fields: fields.size, outlets: outlets.size,
+    matchKey, polygons: matches.length, fields: fields.size, calculatedFields: calculatedFields.size, outlets: outlets.size,
     sources: [...sources], parents: [...parents], sourceShare, delivered, loss,
     isOutlet: terminalMatches === matches.length,
   };
@@ -805,7 +914,7 @@ function networkPopupHtml(networkType, properties, routeStats = null, proximityS
   const loadingLine = loading ? `<p class="network-popup-loading">Dala va quloq bog‘lanishi hisoblanmoqda…</p>` : "";
   let analysis = "";
   if (isCanal && routeStats) {
-    analysis = `<div class="network-popup-kpis"><div><strong>${fmtInt.format(routeStats.fields)}</strong><span>suv oluvchi dala</span><small>${fmtInt.format(routeStats.polygons)} poligon</small></div><div><strong>${fmtInt.format(routeStats.outlets)}</strong><span>yakuniy quloq</span><small>quyi tarmoqda</small></div><div><strong>${networkVolume(routeStats.delivered)}</strong><span>dalalarga yetgan</span><small>${networkVolume(routeStats.loss)} yo‘qotish</small></div></div><div class="network-water-row"><div><span>Hisobiy limit</span><strong>${networkVolume(routeStats.sourceShare)}</strong></div><div><span>Bosh manba</span><strong>${escapeHtml(routeStats.sources.join(", ") || "—")}</strong></div>${routeStats.parents.length ? `<div><span>Bevosita yuqori bo‘g‘in</span><strong>${escapeHtml(routeStats.parents.join(", "))}</strong></div>` : ""}</div>`;
+    analysis = `<div class="network-popup-kpis"><div><strong>${fmtInt.format(routeStats.fields)}</strong><span>xizmat hududidagi dala</span><small>${fmtInt.format(routeStats.calculatedFields)} dalada ekin kiritilgan</small></div><div><strong>${fmtInt.format(routeStats.outlets)}</strong><span>yakuniy quloq</span><small>quyi tarmoqda</small></div><div><strong>${routeStats.calculatedFields ? networkVolume(routeStats.delivered) : "—"}</strong><span>dalalarga hisobiy suv</span><small>${routeStats.calculatedFields ? `${networkVolume(routeStats.loss)} yo‘qotish` : "ekin kiritilgach chiqadi"}</small></div></div><div class="network-water-row"><div><span>Hisobiy limit</span><strong>${routeStats.calculatedFields ? networkVolume(routeStats.sourceShare) : "Ekin kutilmoqda"}</strong></div><div><span>Bosh manba</span><strong>${escapeHtml(routeStats.sources.join(", ") || "—")}</strong></div>${routeStats.parents.length ? `<div><span>Bevosita yuqori bo‘g‘in</span><strong>${escapeHtml(routeStats.parents.join(", "))}</strong></div>` : ""}</div>`;
   } else if (proximityStats) {
     const label = isCanal ? "Kanalga 50 m yaqin dalalar" : "Zovurga 50 m yaqin dalalar";
     analysis = `<div class="network-popup-kpis proximity"><div><strong>${fmtInt.format(proximityStats.fields)}</strong><span>${label}</span><small>${fmtInt.format(proximityStats.polygons)} poligon</small></div><div><strong>${fmtDec.format(proximityStats.area)} ga</strong><span>yaqin maydon</span><small>geometrik baho</small></div><div><strong>${isCanal ? "—" : "0"}</strong><span>yakuniy quloq</span><small>${isCanal ? "topologiya yo‘q" : "zovur suv bermaydi"}</small></div></div><p class="network-popup-note">${isCanal ? "Bu kanal kodi blok suv yo‘li bilan bog‘lanmagan. Yaqin dalalar suv oluvchi dala sifatida tasdiqlanmagan." : "Zovur sug‘orish suvi bermaydi; u sizot suvlarini chiqaradi. Dala soni 50 metr geometrik yaqinlik bo‘yicha hisoblandi."}</p>`;
@@ -888,8 +997,8 @@ function chooseMapFeatures(features) {
 function renderMapView(features) {
   const visible = chooseMapFeatures(features);
   renderLayer(visible);
-  document.querySelector("#map-hint").textContent = features.length === 0 ? "Tanlangan filtrlarga mos poligon topilmadi." : visible.length === features.length ? `${fmtInt.format(visible.length)} poligon ko‘rinmoqda — pasport uchun ustiga bosing` : `${fmtInt.format(visible.length)} / ${fmtInt.format(features.length)} poligon xaritada. Aniq dalani qidiring yoki filtrlang.`;
-  document.querySelector("#data-status").textContent = `${fmtInt.format(fullData.features.length)} poligon · xaritada ${fmtInt.format(visible.length)}`;
+  document.querySelector("#map-hint").textContent = features.length === 0 ? "Dala topilmadi." : `${fmtInt.format(visible.length)} yagona dala ko‘rinmoqda — ekin kiritish uchun ustiga bosing`;
+  document.querySelector("#data-status").textContent = `${fmtInt.format(fullData.features.length)} yagona dala · xaritada ${fmtInt.format(visible.length)}`;
 }
 
 function waterRouteParts(properties) {
@@ -909,7 +1018,7 @@ function terminalOutlet(properties, route) {
 function routeChartSvg(steps, fieldLimit) {
   const width = 900, height = 270, left = 58, right = 74, top = 30, bottom = 48;
   const chartWidth = width - left - right, chartHeight = height - top - bottom;
-  const countMaximum = Math.max(...steps.flatMap((step) => [step.polygons, step.blocks]), 1);
+  const countMaximum = Math.max(...steps.flatMap((step) => [step.fields, step.blocks]), 1);
   const waterMaximum = Math.max(fieldLimit, ...steps.map((step) => step.selectedWater), 1);
   const x = (index) => left + (steps.length === 1 ? chartWidth / 2 : index * chartWidth / (steps.length - 1));
   const countY = (value) => top + chartHeight - value / countMaximum * chartHeight;
@@ -922,7 +1031,7 @@ function routeChartSvg(steps, fieldLimit) {
     return `<line x1="${left}" y1="${chartY}" x2="${width - right}" y2="${chartY}" stroke="#dfe9e2" stroke-width="1"/><text x="${left - 8}" y="${chartY + 3}" text-anchor="end" fill="#718076" font-size="9">${fmtInt.format(countMaximum * (1 - ratio))}</text><text x="${width - right + 8}" y="${chartY + 3}" text-anchor="start" fill="#0f6fff" font-size="9" font-weight="700">${fmtInt.format(waterMaximum * (1 - ratio))}</text>`;
   }).join("");
   const dots = (key, color, scale, label) => steps.map((step, index) => `<circle cx="${x(index)}" cy="${scale(step[key])}" r="4" fill="${color}" stroke="#fff" stroke-width="2"><title>${index + 1}-bosqich · ${escapeHtml(step.name)} · ${label}: ${fmtInt.format(step[key])}${key === "selectedWater" ? " m³" : ""}</title></circle>`).join("");
-  const xLabels = steps.map((step, index) => `<text x="${x(index)}" y="${height - 18}" text-anchor="middle" fill="#52655a" font-size="9" font-weight="650">${index + 1}-bosqich</text>`).join("");
+  const xLabels = steps.map((step, index) => `<text x="${x(index)}" y="${height - 18}" text-anchor="middle" fill="#52655a" font-size="9" font-weight="650">LVL ${index}</text>`).join("");
   const finalStep = steps[steps.length - 1];
   const finalX = x(steps.length - 1), finalY = waterY(finalStep.selectedWater);
   const limitY = waterY(fieldLimit);
@@ -930,8 +1039,8 @@ function routeChartSvg(steps, fieldLimit) {
   const calloutWidth = 164, calloutHeight = 30;
   const calloutX = Math.max(left, finalX - calloutWidth - 10);
   const calloutY = finalY < top + 38 ? finalY + 12 : finalY - 38;
-  const finalCallout = `<g><line x1="${finalX}" y1="${finalY}" x2="${finalX - 12}" y2="${calloutY + calloutHeight / 2}" stroke="#0f6fff" stroke-width="2"/><rect x="${calloutX}" y="${calloutY}" width="${calloutWidth}" height="${calloutHeight}" rx="8" fill="#0f6fff"/><text x="${calloutX + calloutWidth / 2}" y="${calloutY + 12}" text-anchor="middle" fill="#dff4ff" font-size="8" font-weight="700">DALA KIRISHI</text><text x="${calloutX + calloutWidth / 2}" y="${calloutY + 24}" text-anchor="middle" fill="#fff" font-size="12" font-weight="800">${fmtInt.format(finalStep.selectedWater)} m³</text></g>`;
-  return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Tanlangan dala suv limiti, yetib kelgan suv, tarmoqdagi poligonlar va quloqlar"><defs><linearGradient id="routeWaterArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0f6fff" stop-opacity=".28"/><stop offset="100%" stop-color="#00b7ff" stop-opacity=".02"/></linearGradient></defs><text x="${left}" y="16" fill="#17663b" font-size="9" font-weight="700">POLIGON / QULOQ SONI</text><text x="${width - right}" y="16" text-anchor="end" fill="#0f6fff" font-size="9" font-weight="800">TANLANGAN DALA SUVI · m³</text>${grids}<polygon points="${waterArea}" fill="url(#routeWaterArea)"/><line class="route-limit-line" x1="${left}" y1="${limitY}" x2="${width - right}" y2="${limitY}" stroke="#7656d8" stroke-width="3"><title>Hisobiy dala limiti: ${fmtInt.format(fieldLimit)} m³</title></line><text x="${left + 8}" y="${limitLabelY}" fill="#6847ce" font-size="10" font-weight="800">HISOBIY LIMIT ${fmtInt.format(fieldLimit)} m³</text><polyline class="route-count-line" points="${line("polygons", countY)}" fill="none" stroke="#20a866" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><polyline class="route-count-line" points="${line("blocks", countY)}" fill="none" stroke="#f3a51b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><polyline class="route-water-line" points="${waterPoints}" fill="none" stroke="#0f6fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>${dots("polygons", "#20a866", countY, "poligon")}${dots("blocks", "#f3a51b", countY, "quloq")}${dots("selectedWater", "#0f6fff", waterY, "dala suvi")}${finalCallout}${xLabels}</svg>`;
+  const finalCallout = `<g><line x1="${finalX}" y1="${finalY}" x2="${finalX - 12}" y2="${calloutY + calloutHeight / 2}" stroke="#0f6fff" stroke-width="2"/><rect x="${calloutX}" y="${calloutY}" width="${calloutWidth}" height="${calloutHeight}" rx="8" fill="#0f6fff"/><text x="${calloutX + calloutWidth / 2}" y="${calloutY + 12}" text-anchor="middle" fill="#dff4ff" font-size="8" font-weight="700">QULOQDAN DALAGA</text><text x="${calloutX + calloutWidth / 2}" y="${calloutY + 24}" text-anchor="middle" fill="#fff" font-size="12" font-weight="800">${fmtInt.format(finalStep.selectedWater)} m³</text></g>`;
+  return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Tanlangan dala suv limiti, yakuniy quloqdan hisobiy suv, tarmoqdagi dalalar va quloqlar"><defs><linearGradient id="routeWaterArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0f6fff" stop-opacity=".28"/><stop offset="100%" stop-color="#00b7ff" stop-opacity=".02"/></linearGradient></defs><text x="${left}" y="16" fill="#17663b" font-size="9" font-weight="700">DALA / QULOQ SONI</text><text x="${width - right}" y="16" text-anchor="end" fill="#0f6fff" font-size="9" font-weight="800">TANLANGAN DALA SUVI · m³</text>${grids}<polygon points="${waterArea}" fill="url(#routeWaterArea)"/><line class="route-limit-line" x1="${left}" y1="${limitY}" x2="${width - right}" y2="${limitY}" stroke="#7656d8" stroke-width="3"><title>Hisobiy dala limiti: ${fmtInt.format(fieldLimit)} m³</title></line><text x="${left + 8}" y="${limitLabelY}" fill="#6847ce" font-size="10" font-weight="800">HISOBIY LIMIT ${fmtInt.format(fieldLimit)} m³</text><polyline class="route-count-line" points="${line("fields", countY)}" fill="none" stroke="#20a866" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><polyline class="route-count-line" points="${line("blocks", countY)}" fill="none" stroke="#f3a51b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><polyline class="route-water-line" points="${waterPoints}" fill="none" stroke="#0f6fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>${dots("fields", "#20a866", countY, "dala")}${dots("blocks", "#f3a51b", countY, "yakuniy quloq")}${dots("selectedWater", "#0f6fff", waterY, "dala suvi")}${finalCallout}${xLabels}</svg>`;
 }
 
 function renderRouteReport(properties) {
@@ -939,37 +1048,52 @@ function renderRouteReport(properties) {
   const empty = document.querySelector("#route-report-empty");
   const data = document.querySelector("#route-report-data");
   const selectedScenario = deliveryScenario(properties);
-  if (!fullData || !route.length || !selectedScenario) {
+  if (!fullData || !route.length) {
     empty.hidden = false; data.hidden = true;
     document.querySelector("#route-report-title").textContent = "Suv yo‘li aniqlanmagan";
     return;
   }
   const outlet = terminalOutlet(properties, route);
   const routeIntervals = Math.max(route.length - 1, 0);
-  const stageRetention = routeIntervals > 0 ? Math.pow(1 - selectedScenario.lossPct / 100, 1 / routeIntervals) : 1;
+  const stageRetention = selectedScenario && routeIntervals > 0 ? Math.pow(1 - selectedScenario.lossPct / 100, 1 / routeIntervals) : 1;
   const steps = route.map((name, index) => {
     const prefix = route.slice(0, index + 1);
     const matches = fullData.features.filter((feature) => routeStartsWith(waterRouteParts(feature.properties), prefix));
     const uniqueFields = new Set(matches.map((feature) => feature.properties.field_id || feature.properties.plan_part_id));
-    const terminalBlocks = new Set(matches.map((feature) => feature.properties.water_block_id).filter(Boolean));
+    const terminalBlocks = new Set(matches.map((feature) => waterRouteParts(feature.properties).at(-1)).filter(Boolean));
     return {
-      name, index: index + 1, polygons: matches.length, fields: uniqueFields.size, blocks: terminalBlocks.size,
-      selectedWater: selectedScenario.sourceShare * Math.pow(stageRetention, index),
+      name, index: index + 1, fields: uniqueFields.size, blocks: terminalBlocks.size,
+      sourceParts: sum(matches, (feature) => feature.properties.merged_source_parts || 1),
+      selectedWater: selectedScenario ? selectedScenario.sourceShare * Math.pow(stageRetention, index) : 0,
     };
   });
   const selected = steps[steps.length - 1];
-  selected.selectedWater = selectedScenario.delivery;
+  if (selectedScenario) selected.selectedWater = selectedScenario.delivery;
+  const drops = steps.slice(1).map((step, index) => ({ from: steps[index], to: step, drop: steps[index].fields - step.fields }));
+  const largestDrop = drops.sort((first, second) => second.drop - first.drop)[0];
+  const outletLabel = outlet.number ? `${outlet.number}-quloq` : outlet.code;
   empty.hidden = true; data.hidden = false;
-  document.querySelector("#route-report-title").textContent = outlet.number ? `${outlet.number}-quloqda suv oladi` : `Yakuniy quloq: ${outlet.code}`;
-  document.querySelector("#route-report-subtitle").textContent = `${route[0]} → ${outlet.code} · ${selected.index} bosqichli suv yo‘li.`;
-  document.querySelector("#route-metrics").innerHTML = `<div><span>Quloq raqami</span><strong>${outlet.number ? `${escapeHtml(outlet.number)}-quloq` : "Kod bo‘yicha"}</strong><small>${escapeHtml(outlet.code)}</small></div><div><span>Hisobiy dala limiti</span><strong>${fmtInt.format(selectedScenario.sourceShare)} m³</strong><small>${balanceMillions(selectedScenario.activeLimit)} mln m³ tuman limitidan ulush</small></div><div><span>Dala kirishidagi suv</span><strong>${fmtInt.format(selectedScenario.delivery)} m³</strong><small>${fmtInt.format(selectedScenario.lossM3)} m³ yo‘qotish · ${fmtDec.format(selectedScenario.coverage * 100)}% talab</small></div><div><span>Shu quloq tarmog‘i</span><strong>${fmtInt.format(selected.polygons)} poligon</strong><small>${fmtInt.format(selected.fields)} dala · ${fmtInt.format(selected.blocks)} yakuniy quloq</small></div>`;
-  document.querySelector("#route-chart").innerHTML = routeChartSvg(steps, selectedScenario.sourceShare);
+  document.querySelector("#route-report-title").textContent = `${outletLabel} orqali suv oladi`;
+  document.querySelector("#route-report-subtitle").textContent = `${route[0]} → ${outlet.code} · LAST_lvl_0 dan LAST_lvl_${route.length - 1} gacha.`;
+  document.querySelector("#route-metrics").innerHTML = `<div><span>Tarmoq chuqurligi</span><strong>${route.length} daraja</strong><small>LVL 0 — LVL ${route.length - 1}</small></div><div><span>Yakuniy quloq</span><strong>${escapeHtml(outletLabel)}</strong><small>${escapeHtml(outlet.code)}</small></div><div><span>Quloq xizmat hududi</span><strong>${fmtInt.format(selected.fields)} dala</strong><small>${fmtInt.format(selected.sourceParts)} tuproq/GMR hisobiy qismi</small></div><div><span>Quloqdan dalaga</span><strong>${selectedScenario ? `${fmtInt.format(selectedScenario.delivery)} m³` : "Ekin tanlang"}</strong><small>${selectedScenario ? `${fmtInt.format(selectedScenario.lossM3)} m³ ssenariy yo‘qotish` : "suv formulasi shundan keyin chiqadi"}</small></div>`;
+  document.querySelector("#route-explanation").innerHTML = `<strong>${escapeHtml(outletLabel)}</strong> — tanlangan dala yo‘lining terminal tuguni. U ${fmtInt.format(selected.fields)} ta yagona dalaga xizmat qiladigan bitta yakuniy quloq; ${fmtInt.format(selected.sourceParts)} soni esa alohida dala emas, shu dalalarning tuproq/GMR hisobiy qismlaridir.${largestDrop?.drop > 0 ? ` Eng katta tarmoq ajralishi LVL ${largestDrop.from.index - 1} → LVL ${largestDrop.to.index - 1}: ${fmtInt.format(largestDrop.from.fields)} daladan ${fmtInt.format(largestDrop.to.fields)} dala shu yo‘nalishda qoladi. Bu suv yo‘qotilishi emas.` : ""}`;
+  document.querySelector("#route-stage-list").innerHTML = steps.map((step, index) => `<div class="route-stage-item"><span>LVL ${index} · ${index + 1}-DARAJA</span><strong>${escapeHtml(step.name)}</strong><small>${fmtInt.format(step.fields)} dala · ${fmtInt.format(step.blocks)} quyi yakuniy quloq</small></div>`).join("");
+  const chart = document.querySelector("#route-chart");
+  const legend = document.querySelector(".route-chart-legend");
+  chart.hidden = !selectedScenario;
+  legend.hidden = !selectedScenario;
+  chart.innerHTML = selectedScenario ? routeChartSvg(steps, selectedScenario.sourceShare) : "";
 }
 
-function sourceLabel(value) { return value === "observed" ? "manba" : "yaqin dala taxmini"; }
+function sourceLabel(value) {
+  if (value === "observed") return "manba";
+  if (value === "manual_user") return "qo‘lda kiritildi";
+  if (value === "manual_required") return "kiritilmagan";
+  return "yaqin dala taxmini";
+}
 
 function fieldWeatherCalculation(properties) {
-  if (!currentWeather) return null;
+  if (!currentWeather || !properties.crop_group_mvp) return null;
   const weather = weatherStats(currentWeather);
   const kc = CROP_COEFFICIENT[properties.crop_group_mvp] || 1;
   const groundwaterFactor = GROUNDWATER_FACTOR[properties.gmr_mvp] ?? .08;
@@ -978,6 +1102,16 @@ function fieldWeatherCalculation(properties) {
   const netMm = Math.max(cropEt - weather.rain - groundwaterMm, 0);
   const waterM3 = netMm * number(properties.maydoni) * 10;
   return { ...weather, kc, groundwaterFactor, cropEt, groundwaterMm, netMm, waterM3 };
+}
+
+function renderSoilComposition(properties) {
+  const components = properties.crop_norm_components?.length ? properties.crop_norm_components : properties.soil_gmr_components || [];
+  document.querySelector("#field-source-parts").textContent = `${fmtInt.format(number(properties.merged_source_parts) || components.length || 1)} GIS qism → 1 dala`;
+  document.querySelector("#field-soil-components").innerHTML = components.length ? components.map((component) => {
+    const norm = number(component.norm_m3ha);
+    const normText = norm ? `${fmtInt.format(norm)} m³/ga${component.exact_rule === false ? " · yaqin GMR qoidasi" : ""}` : `Tm1 ${text(component.tm1)}`;
+    return `<div class="soil-component-row"><strong>${fmtDec.format(number(component.area_ha))} ga</strong><span>GMR ${escapeHtml(text(component.gmr, "—"))}</span><span>${component.bonitet === null ? "Bonitet —" : `${fmtInt.format(number(component.bonitet))} ball`}</span><small>${escapeHtml(normText)}</small></div>`;
+  }).join("") : `<div class="soil-component-row"><strong>${fmtDec.format(number(properties.maydoni))} ga</strong><span>GMR ${escapeHtml(text(properties.gmr_mvp))}</span><span>${fmtInt.format(number(properties.bonitet))} ball</span><small>Tm1 ${escapeHtml(text(properties.Tm1))}</small></div>`;
 }
 
 function selectField(feature, layer) {
@@ -999,16 +1133,19 @@ function selectField(feature, layer) {
   document.querySelector("#confidence-ring").style.setProperty("--ring", number(p.zone_confidence));
   document.querySelector("#field-zone").textContent = p.irrigation_zone === "boz" ? "Bo‘z mintaqasi" : p.irrigation_zone === "chol" ? "Cho‘l mintaqasi" : "Aniqlanmagan";
   document.querySelector("#field-zone-note").textContent = p.zone_status === "exclusive_gmr" ? "GMR bo‘yicha aniqlangan" : `Hududiy taxmin · ${fmtInt.format(number(p.zone_distance_m))} m`;
-  document.querySelector("#field-crop").textContent = `${text(p.crop_mvp, "Ko‘rsatilmagan")} · ${sourceLabel(p.crop_mvp_source)}`;
+  document.querySelector("#field-crop").textContent = `${text(p.crop_mvp, "Ekin kiritilmagan")} · ${sourceLabel(p.crop_mvp_source)}`;
   document.querySelector("#field-area").textContent = `${fmtDec.format(number(p.maydoni))} ga`;
-  document.querySelector("#field-gmr").textContent = `${text(p.gmr_mvp, "Yo‘q")} · ${sourceLabel(p.gmr_mvp_source)}`;
-  document.querySelector("#field-bonitet").textContent = text(p.bonitet, "Yo‘q");
+  const distinctGmrs = [...new Set((p.soil_gmr_components || []).map((component) => component.gmr).filter(Boolean))];
+  document.querySelector("#field-gmr").textContent = distinctGmrs.length > 1 ? `${distinctGmrs.join(" / ")} · ${distinctGmrs.length} qism` : `${text(p.gmr_mvp, "Yo‘q")} · dominant`;
+  document.querySelector("#field-bonitet").textContent = p.bonitet ? `${fmtDec.format(number(p.bonitet))} · maydon-vaznli` : "Yo‘q";
+  renderSoilComposition(p);
+  updateManualCropControls(p);
   document.querySelector("#field-water").textContent = p.planned_water_m3_mvp ? fmtInt.format(p.planned_water_m3_mvp) : "—";
   document.querySelector("#field-norm").textContent = p.norm_m3ha_mvp ? `${fmtInt.format(p.norm_m3ha_mvp)} m³/ga` : "—";
   document.querySelector("#field-count").textContent = text(p.irrigation_count_mvp);
   document.querySelector("#field-window").textContent = p.irrigation_start_mvp ? `${p.irrigation_start_mvp} — ${p.irrigation_end_mvp}` : "—";
   document.querySelector("#field-norm-status").textContent = meta.label;
-  document.querySelector("#field-season-formula").textContent = `${fmtDec.format(number(p.maydoni))} ga × ${fmtInt.format(number(p.norm_m3ha_mvp))} m³/ga = ${fmtInt.format(number(p.planned_water_m3_mvp))} m³`;
+  document.querySelector("#field-season-formula").textContent = p.crop_group_mvp ? `Σ(tuproq/GMR qismi maydoni × shu qism PNG normasi) = ${fmtInt.format(number(p.planned_water_m3_mvp))} m³` : "Ekin tanlang — GMR va tuproq qismlari bo‘yicha norma avtomatik hisoblanadi";
 
   const delivery = deliveryScenario(p);
   const deliveryPanel = document.querySelector("#field-delivery-plan");
@@ -1019,7 +1156,8 @@ function selectField(feature, layer) {
     document.querySelector("#field-route-loss").textContent = `${fmtDec.format(delivery.lossPct)}% · ${fmtInt.format(delivery.lossM3)} m³`;
     document.querySelector("#field-delivery-water").textContent = `${fmtInt.format(delivery.delivery)} m³`;
     document.querySelector("#field-delivery-formula").textContent = `${fmtInt.format(number(document.querySelector("#input-water-limit").value) * 1e6)} × ${fmtInt.format(number(p.seasonal_need_m3))} / ${fmtInt.format(number(p.district_need_m3))} × (1 − ${fmtDec.format(delivery.lossPct)}%) = ${fmtInt.format(delivery.delivery)} m³`;
-    document.querySelector("#field-delivery-note").textContent = `${fmtInt.format(number(p.branch_field_count))} poligon bir blokda; jami normativ talab ${fmtInt.format(number(p.branch_need_m3))} m³. Yo‘qotish har bosqichga 1,5% ssenariy, o‘lchangan sarf emas.`;
+    const route = waterRouteParts(p), outlet = terminalOutlet(p, route);
+    document.querySelector("#field-delivery-note").textContent = `${outlet.number ? `${outlet.number}-quloq` : outlet.code} — tanlangan yo‘lning yakuniy tuguni. Dala ichidagi ariq yoki suv kirish darvozasi geometriyasi manbada yo‘q; hajm 1,5%/daraja ssenariysi, o‘lchangan sarf emas.`;
   }
 
   const analysis = fieldWeatherCalculation(p);
@@ -1029,10 +1167,10 @@ function selectField(feature, layer) {
     document.querySelector("#field-conclusion").textContent = analysis.netMm > 30 ? `7 kunlik sof talab ${fmtDec.format(analysis.netMm)} mm. Issiq va quruq sharoit sabab dala kuzatuvi hamda sug‘orish navbatini yaqinlashtirish kerak.` : `7 kunlik sof talab ${fmtDec.format(analysis.netMm)} mm. Reja dala namligi bilan tekshirilgach tasdiqlanadi.`;
   } else {
     document.querySelector("#field-seven-day-water").textContent = "—";
-    document.querySelector("#field-weather-formula").textContent = "Open-Meteo ma’lumoti kutilmoqda";
-    document.querySelector("#field-conclusion").textContent = "Ob-havo ma’lumoti kelgach 7 kunlik baho hisoblanadi.";
+    document.querySelector("#field-weather-formula").textContent = p.crop_group_mvp ? "Open-Meteo ma’lumoti kutilmoqda" : "Ekin kiritilgach ET0 × Kc formulasi hisoblanadi";
+    document.querySelector("#field-conclusion").textContent = p.crop_group_mvp ? "Ob-havo ma’lumoti kelgach 7 kunlik baho hisoblanadi." : "Hozir dala bo‘sh. Yuqoridan 7 ekindan birini tanlang.";
   }
-  document.querySelector("#field-note").textContent = p.demo_norm_status === "demo_ready_observed" ? "Ekin, GMR va zona manba ma’lumotidan olingan. Mavsumiy ko‘rsatkich normativ hisob, amaldagi sarf emas." : `Ekin — ${sourceLabel(p.crop_mvp_source)}; GMR — ${sourceLabel(p.gmr_mvp_source)}; zona — taxminiy. Real dala ma’lumoti bilan tasdiqlash talab etiladi.`;
+  document.querySelector("#field-note").textContent = p.crop_group_mvp ? `Ekin — qo‘lda kiritildi. Formula dala ichidagi ${p.soil_gmr_components?.length || 1} ta real tuproq/GMR qismi maydonlarini alohida hisoblaydi.` : "Dala geometriyasi va tuproq/GMR tarkibi manbadan olindi; ekin ataylab bo‘sh qoldirilgan va faqat qo‘lda kiritiladi.";
   renderFieldDecision(p);
   renderRouteReport(p);
 }
@@ -1127,15 +1265,11 @@ function initMapPage() {
       const response = await fetch(DATA_URL);
       if (!response.ok) throw new Error(`GeoJSON yuklanmadi: ${response.status}`);
       fullData = await response.json();
+      if (irrigationRules.length) applyStoredCropAssignments(fullData.features);
       buildFieldNetworkIndexes(fullData.features);
-      populateCropFilter(fullData.features);
-      populateGmrFilter(fullData.features);
       document.querySelector("#map-loading").hidden = true;
       renderMapView(fullData.features);
       const bounds = geoLayer.getBounds(); if (bounds.isValid()) map.fitBounds(bounds.pad(.05));
-      ["field-search", "crop-filter", "status-filter", "zone-filter", "gmr-filter", "area-filter", "confidence-filter", "water-filter"].forEach((id) => document.querySelector(`#${id}`).addEventListener("input", applyFilters));
-      document.querySelector("#map-metric").addEventListener("input", updateMapMetric);
-      document.querySelector("#filter-reset").addEventListener("click", resetFilters);
     } catch (error) {
       document.querySelector("#map-loading").innerHTML = `<p><strong>Ma’lumot yuklanmadi.</strong><br>${escapeHtml(error.message)}</p>`;
       console.error(error);
@@ -1163,6 +1297,8 @@ document.querySelector("#balance-reset").addEventListener("click", setBalanceInp
 document.querySelector("#start-split").addEventListener("click", startSplitMode);
 document.querySelector("#cancel-split").addEventListener("click", () => cancelSplit());
 document.querySelector("#export-split").addEventListener("click", exportSplitGeoJSON);
+document.querySelector("#assign-crop").addEventListener("click", assignCropToSelectedField);
+loadManualCropAssignments();
 const initialView = new URLSearchParams(window.location.search).get("view");
 if (initialView === "map" || initialView === "water-balance") showView(initialView);
 loadSummary();
