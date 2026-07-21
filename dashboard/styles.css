@@ -322,3 +322,6 @@ body { background:radial-gradient(circle at 80% 0,rgba(179,218,190,.18),transpar
 .route-stage-item strong { font-size:10px; line-height:1.35; }
 .route-stage-item small { margin-top:4px; line-height:1.35; }
 .route-disclaimer { border:1px solid #f0d39b; font-size:10px; }
+.leaflet-control-layers { border:1px solid rgba(35,76,53,.18) !important; border-radius:9px !important; box-shadow:0 5px 18px rgba(18,55,35,.18) !important; }
+.leaflet-control-layers-toggle { width:38px !important; height:38px !important; background-size:19px 19px !important; }
+.leaflet-control-layers-expanded { min-width:205px; padding:10px 12px !important; border-radius:9px !important; color:#31473b; font-size:11px; }

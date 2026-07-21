@@ -67,6 +67,7 @@ try {
     return {
       assigned: fullData.features.filter((feature) => feature.properties.crop_group_mvp).length,
       crops: [...new Set(fullData.features.map((feature) => feature.properties.crop_group_mvp).filter(Boolean))].sort(),
+      cropAreas: Object.fromEntries(PNG_CROP_ORDER.map((group) => [group, fullData.features.filter((feature) => feature.properties.crop_group_mvp === group).reduce((total, feature) => total + Number(feature.properties.maydoni || 0), 0)])),
       denominator: currentDistrictNeed(),
       sourceTotal,
       officialLimit: Number(document.querySelector("#input-water-limit").value) * 1e6,
@@ -78,6 +79,7 @@ try {
   })()`);
   console.log(JSON.stringify({ checkpoint: "recommendation", recommendation }, null, 2));
   if (recommendation.assigned !== 10710 || recommendation.crops.length !== 6) throw new Error("Tavsiya barcha dalaga 6 ekinni joylashtirmadi");
+  if (recommendation.cropAreas.alfalfa > 5.000001) throw new Error(`Beda tavsiyasi 5 ga limitdan oshdi: ${recommendation.cropAreas.alfalfa}`);
   if (recommendation.denominator.mode !== "dynamic") throw new Error("Tavsiya tugagach tuman talabi dinamik bo‘lmadi");
   if (Math.abs(recommendation.sourceTotal - recommendation.officialLimit) > 1) throw new Error("Dala limit ulushlari rasmiy limitga yig‘ilmadi");
   if (Math.abs(recommendation.supplied - recommendation.officialLimit * .88) > 10000) throw new Error("Boshlang‘ich berilgan suv rasmiy limitning 88% iga teng emas");
@@ -97,12 +99,24 @@ try {
       explanation: document.querySelector("#route-explanation").textContent,
       chartLabel: document.querySelector("#route-chart svg")?.getAttribute("aria-label"),
       chartText: document.querySelector("#route-chart").textContent,
+      popup: popupHtml(target.properties),
     };
   })()`);
   if (!/^\d{1,3}$/.test(routeUi.confidence)) throw new Error("Zona ishonchliligi halqadan chiqadigan kasr son bo‘lib qoldi");
   if (!routeUi.title.includes("dalaga suv yetadi") || !routeUi.subtitle.includes("tarmoq bo‘g‘ini")) throw new Error("Suv yo‘li sarlavhasi oddiy tilda emas");
   if (!routeUi.legend.includes("Har bo‘g‘indan keyin qolgan suv") || routeUi.chartText.includes("LVL")) throw new Error("Route chart eski LVL terminlaridan tozalanmadi");
   if (!routeUi.explanation.includes("Grafikni qanday o‘qish kerak") || !routeUi.chartLabel) throw new Error("Route chart izohi yoki accessibility yorlig‘i yo‘q");
+  if (!routeUi.popup.includes("Bonitet:") || !routeUi.popup.includes("ball")) throw new Error("Dala popupida bonitet balli yo‘q");
+  const layerControlUi = await evaluate(`(async () => {
+    const control = document.querySelector(".leaflet-control-layers");
+    const initiallyCollapsed = !control.classList.contains("leaflet-control-layers-expanded");
+    layerControl.expand();
+    const didExpand = control.classList.contains("leaflet-control-layers-expanded");
+    map.fire("baselayerchange", { layer: null });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    return { initiallyCollapsed, didExpand, collapsedAfterSelection: !control.classList.contains("leaflet-control-layers-expanded") };
+  })()`);
+  if (!layerControlUi.initiallyCollapsed || !layerControlUi.didExpand || !layerControlUi.collapsedAfterSelection) throw new Error("Xarita qatlamlari tugmasi yopilish siklidan o‘tmadi");
   if (process.env.CAPTURE_ROUTE_UI) {
     await evaluate(`document.querySelector("#route-report").scrollIntoView({ block: "start" })`);
     await delay(500);

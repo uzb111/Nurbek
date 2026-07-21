@@ -36,6 +36,7 @@ const CROP_COEFFICIENT = { cotton: 1.15, winter_grain: 1.05, alfalfa: 1.10, maiz
 const GROUNDWATER_FACTOR = { I: 0.16, II: 0.14, III: 0.12, IV: 0.10, V: 0.08, VI: 0.06, IX: 0.04 };
 const CROP_LABELS = { cotton: "Paxta", winter_grain: "Bug‘doy", alfalfa: "Beda", maize: "Makkajo‘xori", orchard: "Bog‘", melons: "Poliz", vegetables: "Sabzavot" };
 const PNG_CROP_ORDER = ["cotton", "alfalfa", "maize", "vegetables", "melons", "winter_grain"];
+const RECOMMENDATION_AREA_LIMIT_HA = { alfalfa: 5 };
 const CROP_COLORS = { cotton: "#00c96b", alfalfa: "#7c4dff", maize: "#ffd000", vegetables: "#ff3d71", melons: "#ff8a00", winter_grain: "#00a3ff" };
 const CROP_PROFILES = {
   cotton: { minBonitet: 55, textures: [3, 4, 5], heat: 92 }, winter_grain: { minBonitet: 40, textures: [2, 3, 4, 5], heat: 84 },
@@ -52,6 +53,7 @@ let districtBalance = null;
 let officialLimit = null;
 let irrigationRules = [];
 let map = null;
+let layerControl = null;
 let geoLayer = null;
 let fullData = null;
 let selectedLayer = null;
@@ -793,33 +795,41 @@ function applyCropRecommendations() {
   const dashboardArea = sum(fullData.features, (feature) => feature.properties.maydoni);
   const sourceCropArea = sum(districtBalance.crop_groups.filter((item) => PNG_CROP_ORDER.includes(item.group)), (item) => item.area_ha);
   const targetAreas = new Map(districtBalance.crop_groups.filter((item) => PNG_CROP_ORDER.includes(item.group)).map((item) => [item.group, dashboardArea * number(item.area_ha) / sourceCropArea]));
+  Object.entries(RECOMMENDATION_AREA_LIMIT_HA).forEach(([group, limit]) => targetAreas.set(group, Math.min(targetAreas.get(group) || limit, limit)));
   const assignedAreas = new Map(PNG_CROP_ORDER.map((group) => [group, 0]));
+  const canAssign = (group, area) => {
+    const assigned = assignedAreas.get(group) || 0;
+    const hardLimit = RECOMMENDATION_AREA_LIMIT_HA[group];
+    if (hardLimit !== undefined) return assigned + area <= hardLimit + 1e-9;
+    return assigned + area <= (targetAreas.get(group) || 0) * 1.015;
+  };
   const plans = fullData.features.map((feature) => ({ feature, area: number(feature.properties.maydoni), candidates: cropCandidatesForField(feature.properties) || [] })).filter((plan) => plan.candidates.length);
   const pairs = plans.flatMap((plan) => plan.candidates.map((candidate) => ({ plan, candidate }))).sort((first, second) => second.candidate.score - first.candidate.score);
   const assignments = new Map();
   [...PNG_CROP_ORDER].sort((first, second) => (targetAreas.get(first) || 0) - (targetAreas.get(second) || 0)).forEach((group) => {
     const target = targetAreas.get(group) || 0;
     const options = plans.map((plan) => ({ plan, candidate: plan.candidates.find((item) => item.group === group) })).filter((item) => item.candidate && !assignments.has(item.plan.feature));
-    const withinTarget = options.filter((item) => item.plan.area <= target * 1.015);
-    const selected = (withinTarget.length ? withinTarget : options).sort((first, second) => second.candidate.score - first.candidate.score || first.plan.area - second.plan.area)[0];
+    const withinTarget = options.filter((item) => item.plan.area <= (RECOMMENDATION_AREA_LIMIT_HA[group] ?? target * 1.015));
+    const pool = RECOMMENDATION_AREA_LIMIT_HA[group] !== undefined ? withinTarget : (withinTarget.length ? withinTarget : options);
+    const selected = pool.sort((first, second) => second.candidate.score - first.candidate.score || first.plan.area - second.plan.area)[0];
     if (!selected) return;
     assignments.set(selected.plan.feature, selected.candidate);
     assignedAreas.set(group, selected.plan.area);
   });
   pairs.forEach(({ plan, candidate }) => {
     if (assignments.has(plan.feature)) return;
-    const target = targetAreas.get(candidate.group) || 0;
-    const assigned = assignedAreas.get(candidate.group) || 0;
-    if (assigned + plan.area > target * 1.015) return;
+    if (!canAssign(candidate.group, plan.area)) return;
     assignments.set(plan.feature, candidate);
-    assignedAreas.set(candidate.group, assigned + plan.area);
+    assignedAreas.set(candidate.group, (assignedAreas.get(candidate.group) || 0) + plan.area);
   });
   plans.filter((plan) => !assignments.has(plan.feature)).forEach((plan) => {
-    const candidate = [...plan.candidates].sort((first, second) => {
+    const eligible = plan.candidates.filter((candidate) => RECOMMENDATION_AREA_LIMIT_HA[candidate.group] === undefined || canAssign(candidate.group, plan.area));
+    const candidate = [...eligible].sort((first, second) => {
       const firstLoad = (assignedAreas.get(first.group) || 0) / Math.max(targetAreas.get(first.group) || 1, 1);
       const secondLoad = (assignedAreas.get(second.group) || 0) / Math.max(targetAreas.get(second.group) || 1, 1);
       return (second.score - secondLoad * 35) - (first.score - firstLoad * 35);
     })[0];
+    if (!candidate) return;
     assignments.set(plan.feature, candidate);
     assignedAreas.set(candidate.group, (assignedAreas.get(candidate.group) || 0) + plan.area);
   });
@@ -832,7 +842,7 @@ function applyCropRecommendations() {
     counts.set(recommendation.group, (counts.get(recommendation.group) || 0) + 1);
   });
   splitState.parts.forEach((feature) => {
-    const recommendation = recommendedCropForField(feature.properties);
+    const recommendation = (cropCandidatesForField(feature.properties) || []).find((candidate) => candidate.group !== "alfalfa");
     if (!recommendation) return;
     feature.properties.crop_group_mvp = recommendation.group;
     applySplitCropRule(feature);
@@ -846,7 +856,7 @@ function applyCropRecommendations() {
     const replacement = selectedFeature.properties.split_status === "scenario" ? splitLayerForField(selectedFeature.properties.field_id) : selectedLayer;
     if (replacement) selectField(selectedFeature, replacement);
   }
-  const summary = PNG_CROP_ORDER.map((group) => `${CROP_LABELS[group]} ${fmtInt.format(counts.get(group) || 0)}`).join(" · ");
+  const summary = PNG_CROP_ORDER.map((group) => `${CROP_LABELS[group]} ${fmtInt.format(counts.get(group) || 0)} dala / ${fmtDec.format(assignedAreas.get(group) || 0)} ga`).join(" · ");
   document.querySelector("#map-hint").textContent = `Tavsiya tayyor: ${fmtInt.format(assignments.size)} dala, ${counts.size}/6 ekin joylashtirildi. ${summary}.`;
 }
 
@@ -1325,7 +1335,8 @@ function popupHtml(properties) {
   const meta = getMeta(properties.demo_norm_status);
   const water = districtBalance && properties.crop_group_mvp ? fieldWaterAnalysis(properties) : null;
   const waterLine = water ? `<p class="popup-line" style="color:${WATER_STATUS_META[water.key].color}">${WATER_STATUS_META[water.key].label} · ${fmtInt.format(water.coverage * 100)}%</p>` : "";
-  return `<h3 class="popup-title">${escapeHtml(text(properties.crop_mvp, "Ekin ko‘rsatilmagan"))}</h3><p class="popup-line">Maydon: <strong>${fmtDec.format(number(properties.maydoni))} ga</strong></p><p class="popup-line">GMR: <strong>${escapeHtml(text(properties.gmr_mvp))}</strong> · Zona: <strong>${escapeHtml(text(properties.irrigation_zone))}</strong></p>${waterLine}<p class="popup-line" style="color:${meta.color}">${meta.label}</p>`;
+  const bonitet = number(properties.bonitet);
+  return `<h3 class="popup-title">${escapeHtml(text(properties.crop_mvp, "Ekin ko‘rsatilmagan"))}</h3><p class="popup-line">Maydon: <strong>${fmtDec.format(number(properties.maydoni))} ga</strong></p><p class="popup-line">Bonitet: <strong>${bonitet ? `${fmtDec.format(bonitet)} ball` : "Ma’lumot yo‘q"}</strong></p><p class="popup-line">GMR: <strong>${escapeHtml(text(properties.gmr_mvp))}</strong> · Zona: <strong>${escapeHtml(text(properties.irrigation_zone))}</strong></p>${waterLine}<p class="popup-line" style="color:${meta.color}">${meta.label}</p>`;
 }
 
 function networkNodeKey(value) { return String(value || "").trim().toLocaleLowerCase(); }
@@ -1784,11 +1795,15 @@ function initMapPage() {
     const street = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap contributors" });
     imagery.addTo(map);
     networkGroups = { kanal: L.layerGroup(), zovur: L.layerGroup() };
-    L.control.layers({ "ArcGIS World Imagery": imagery, "Oddiy xarita": street }, { [NETWORK_SOURCES.kanal.label]: networkGroups.kanal, [NETWORK_SOURCES.zovur.label]: networkGroups.zovur }, { position: "topright", collapsed: false }).addTo(map);
+    const closeLayerControl = () => setTimeout(() => layerControl?.collapse(), 0);
+    layerControl = L.control.layers({ "ArcGIS World Imagery": imagery, "Oddiy xarita": street }, { [NETWORK_SOURCES.kanal.label]: networkGroups.kanal, [NETWORK_SOURCES.zovur.label]: networkGroups.zovur }, { position: "topright", collapsed: true }).addTo(map);
+    map.on("baselayerchange", closeLayerControl);
     map.on("overlayadd", ({ layer }) => {
       const networkType = Object.keys(networkGroups).find((key) => networkGroups[key] === layer);
       if (networkType) loadNetworkOverlay(networkType);
+      closeLayerControl();
     });
+    map.on("overlayremove", closeLayerControl);
     try {
       const [response, etResponse] = await Promise.all([fetch(DATA_URL), fetch(ACTUAL_ET_URL, { cache: "no-store" })]);
       if (!response.ok) throw new Error(`GeoJSON yuklanmadi: ${response.status}`);
