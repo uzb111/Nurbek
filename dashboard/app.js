@@ -346,13 +346,15 @@ function applyStoredCropAssignments(features) {
 function updateManualCropControls(properties = null) {
   const select = document.querySelector("#manual-crop-select");
   const button = document.querySelector("#assign-crop");
+  const splitButton = document.querySelector("#toolbar-start-split");
   const label = document.querySelector("#manual-crop-selected-field");
   if (!properties) {
-    select.value = ""; button.disabled = true; label.textContent = "Avval xaritadan dalani tanlang";
+    select.value = ""; button.disabled = true; splitButton.disabled = true; label.textContent = "Avval xaritadan dalani tanlang";
     return;
   }
   select.value = properties.crop_group_mvp || "";
   button.disabled = false;
+  splitButton.disabled = false;
   label.textContent = `Dala ${String(properties.field_id || properties.feature_id).slice(0, 8)} · ${fmtDec.format(number(properties.maydoni))} ga`;
 }
 
@@ -515,6 +517,7 @@ function startSplitMode() {
   document.querySelector("#split-message").textContent = "Birinchi nuqtani xaritada belgilang.";
   map.getContainer().classList.add("split-cursor");
   map.on("click", onSplitMapClick);
+  document.querySelector(".split-tool")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 function onSplitMapClick(event) {
@@ -596,37 +599,52 @@ function applySplitCropRule(feature) {
   const properties = feature.properties;
   properties.crop_mvp = CROP_LABELS[properties.crop_group_mvp] || null;
   properties.crop_mvp_source = "split_user_selection";
-  const rule = exactSplitRule(properties);
-  if (!rule) {
-    properties.norm_m3ha_mvp = null; properties.planned_water_m3_mvp = null;
-    properties.irrigation_count_mvp = null; properties.irrigation_start_mvp = null; properties.irrigation_end_mvp = null;
-    properties.demo_norm_status = "demo_norm_unavailable"; properties.norm_source = null;
+  if (!properties.crop_group_mvp) {
+    Object.assign(properties, {
+      crop_norm_components: [], norm_m3ha_mvp: null, planned_water_m3_mvp: null, seasonal_need_m3: null,
+      irrigation_count_mvp: null, irrigation_start_mvp: null, irrigation_end_mvp: null,
+      demo_norm_status: "crop_required", norm_source: null, delivery_calc_status: "norm_unavailable",
+    });
     return;
   }
-  properties.norm_m3ha_mvp = number(rule.seasonal_norm_m3ha);
-  properties.planned_water_m3_mvp = properties.maydoni * properties.norm_m3ha_mvp;
-  properties.irrigation_count_mvp = rule.irrigation_pattern;
-  properties.irrigation_start_mvp = rule.start_month_day;
-  properties.irrigation_end_mvp = rule.end_month_day;
-  properties.demo_norm_status = "demo_ready_proxy";
-  properties.norm_source = rule.source;
+  const rule = exactSplitRule(properties);
+  if (!rule) {
+    Object.assign(properties, {
+      crop_norm_components: [], norm_m3ha_mvp: null, planned_water_m3_mvp: null, seasonal_need_m3: null,
+      irrigation_count_mvp: null, irrigation_start_mvp: null, irrigation_end_mvp: null,
+      demo_norm_status: "demo_norm_unavailable", norm_source: null, delivery_calc_status: "norm_unavailable",
+    });
+    return;
+  }
+  const norm = number(rule.seasonal_norm_m3ha);
+  const area = number(properties.maydoni);
+  const seasonalNeed = area * norm;
+  Object.assign(properties, {
+    crop_norm_components: [{ area_ha: area, gmr: properties.gmr_mvp, bonitet: properties.bonitet, tm1: properties.Tm1,
+      zone: properties.irrigation_zone, rule_gmr: rule.gmr, exact_rule: true, norm_m3ha: norm, water_m3: seasonalNeed,
+      irrigation_pattern: rule.irrigation_pattern, start: rule.start_month_day, end: rule.end_month_day, source: rule.source }],
+    norm_m3ha_mvp: norm, planned_water_m3_mvp: seasonalNeed, seasonal_need_m3: seasonalNeed,
+    irrigation_count_mvp: rule.irrigation_pattern, irrigation_start_mvp: rule.start_month_day, irrigation_end_mvp: rule.end_month_day,
+    demo_norm_status: "demo_ready_proxy", norm_source: rule.source,
+    delivery_calc_status: seasonalNeed && properties.water_route ? "scenario_ready" : "norm_unavailable",
+  });
 }
 
 function splitPartSummary(feature) {
   const properties = feature.properties;
   const rule = exactSplitRule(properties);
-  const water = fieldWaterAnalysis(properties);
+  const water = properties.crop_group_mvp ? fieldWaterAnalysis(properties) : null;
   const area = number(properties.maydoni);
   const alternatives = cropRecommendations(properties).map((item) => item.name).join(", ");
-  return { rule, water, area, etM3: water.demandM3Ha * area, availableM3: water.availableM3Ha * area, alternatives };
+  return { rule, water, area, etM3: water ? water.demandM3Ha * area : null, availableM3: water ? water.availableM3Ha * area : null, alternatives };
 }
 
 function renderSplitLayer() {
   if (splitState.layer) map.removeLayer(splitState.layer);
   splitState.layer = L.geoJSON(turf.featureCollection(splitState.parts), {
     style(feature) {
-      const water = fieldWaterAnalysis(feature.properties);
-      return { color: feature.properties.split_part === "A" ? "#00e5ff" : "#ff4fd8", weight: 4, opacity: 1, fillColor: WATER_STATUS_META[water.key].color, fillOpacity: .82 };
+      const water = feature.properties.crop_group_mvp ? fieldWaterAnalysis(feature.properties) : null;
+      return { color: feature.properties.split_part === "A" ? "#00e5ff" : "#ff4fd8", weight: 4, opacity: 1, fillColor: water ? WATER_STATUS_META[water.key].color : MAP_STATUS_COLORS.crop_required, fillOpacity: .82 };
     },
     onEachFeature(feature, layer) { layer.bindTooltip(`Qism ${feature.properties.split_part} · ${fmtDec.format(feature.properties.maydoni)} ga · ${CROP_LABELS[feature.properties.crop_group_mvp] || "Ekin kiritilmagan"}`, { sticky: true }); },
   }).addTo(map);
@@ -640,6 +658,9 @@ function renderSplitEditors() {
     const properties = feature.properties;
     const summary = splitPartSummary(feature);
     const rule = summary.rule;
+    if (!properties.crop_group_mvp) {
+      return `<article class="split-part-card" data-part-index="${index}"><div class="split-part-head"><strong>Qism ${properties.split_part}</strong><span>${fmtDec.format(summary.area)} ga</span></div><div class="split-part-grid"><label>Ekin<select data-split-field="crop_group_mvp">${splitCropOptions(properties.crop_group_mvp)}</select></label><label>Zona<select data-split-field="irrigation_zone"><option value="boz" ${properties.irrigation_zone === "boz" ? "selected" : ""}>Bo‘z</option><option value="chol" ${properties.irrigation_zone === "chol" ? "selected" : ""}>Cho‘l</option></select></label><label>GMR<select data-split-field="gmr_mvp">${splitGmrOptions(properties.gmr_mvp)}</select></label><label>Bonitet<input data-split-field="bonitet" type="number" min="0" max="100" value="${text(properties.bonitet, "")}" /></label><label>Tm1<select data-split-field="Tm1">${[1,2,3,4,5,6].map((value) => `<option value="${value}" ${number(properties.Tm1) === value ? "selected" : ""}>${value}</option>`).join("")}</select></label></div><div class="split-result"><div class="split-full"><span>Hisoblash holati</span><strong>Avval shu qism uchun ekin tanlang</strong><small>Maydon × PNG normasi, limit ulushi va tarmoqdan yetadigan suv shu qism uchun alohida qayta hisoblanadi.</small></div></div><p class="split-alternatives">Boshlang‘ich GMR va tuproq ota dalaning dominant qiymatidan olingan; kerak bo‘lsa yuqorida shu qism uchun tahrirlang.</p></article>`;
+    }
     const waterMeta = WATER_STATUS_META[summary.water.key];
     return `<article class="split-part-card" data-part-index="${index}"><div class="split-part-head"><strong>Qism ${properties.split_part}</strong><span>${fmtDec.format(summary.area)} ga · ${escapeHtml(properties.field_id.slice(-18))}</span></div><div class="split-part-grid"><label>Ekin<select data-split-field="crop_group_mvp">${splitCropOptions(properties.crop_group_mvp)}</select></label><label>Zona<select data-split-field="irrigation_zone"><option value="boz" ${properties.irrigation_zone === "boz" ? "selected" : ""}>Bo‘z</option><option value="chol" ${properties.irrigation_zone === "chol" ? "selected" : ""}>Cho‘l</option></select></label><label>GMR<select data-split-field="gmr_mvp">${splitGmrOptions(properties.gmr_mvp)}</select></label><label>Bonitet<input data-split-field="bonitet" type="number" min="0" max="100" value="${text(properties.bonitet, "")}" /></label><label>Tm1<select data-split-field="Tm1">${[1,2,3,4,5,6].map((value) => `<option value="${value}" ${number(properties.Tm1) === value ? "selected" : ""}>${value}</option>`).join("")}</select></label></div><div class="split-result">${rule ? `<div><span>PNG normasi</span><strong>${fmtInt.format(properties.norm_m3ha_mvp)} m³/ga</strong><small>${escapeHtml(rule.source)}</small></div><div><span>Suv limiti</span><strong>${fmtInt.format(properties.planned_water_m3_mvp)} m³</strong><small>maydon × norma</small></div><div><span>Sug‘orish</span><strong>${escapeHtml(rule.irrigation_pattern)}</strong><small>${rule.start_month_day} — ${rule.end_month_day}</small></div>` : `<div class="split-full"><span>PNG qoidasi</span><strong>Bu zona–GMR–ekin kombinatsiyasi topilmadi</strong></div>`}<div><span>ET sof talab</span><strong>${fmtInt.format(summary.etM3)} m³</strong><small>${fmtInt.format(summary.water.demandM3Ha)} m³/ga</small></div><div><span>Mavjud suv</span><strong>${fmtInt.format(summary.availableM3)} m³</strong><small>${fmtInt.format(summary.water.coverage * 100)}% qoplash</small></div><div><span>Suv holati</span><strong style="color:${waterMeta.color}">${waterMeta.label}</strong><small>mustaqil qism hisobi</small></div></div><p class="split-alternatives">Mos muqobil ekinlar: ${escapeHtml(summary.alternatives || "aniqlanmadi")}</p></article>`;
   }).join("");
@@ -1295,6 +1316,7 @@ document.querySelector("#reset-view").addEventListener("click", () => geoLayer &
 ["input-water-limit", "input-water-supplied", "input-water-used"].forEach((id) => document.querySelector(`#${id}`).addEventListener("input", updateWaterBalance));
 document.querySelector("#balance-reset").addEventListener("click", setBalanceInputs);
 document.querySelector("#start-split").addEventListener("click", startSplitMode);
+document.querySelector("#toolbar-start-split").addEventListener("click", startSplitMode);
 document.querySelector("#cancel-split").addEventListener("click", () => cancelSplit());
 document.querySelector("#export-split").addEventListener("click", exportSplitGeoJSON);
 document.querySelector("#assign-crop").addEventListener("click", assignCropToSelectedField);
