@@ -6,8 +6,8 @@ const DISTRICT_BALANCE_URL = "../mvp_data/district_water_balance.json";
 const OFFICIAL_LIMIT_URL = "../mvp_data/official_water_limit_2025.json";
 const IRRIGATION_RULES_URL = "../mvp_data/config/irrigation_norms.csv";
 const NETWORK_SOURCES = {
-  kanal: { url: "../mvp_data/geojson/kanal.geojson", label: "Kanallar — 1 615", color: "#16b8e8", weight: 1.8 },
-  zovur: { url: "../mvp_data/geojson/zovur.geojson", label: "Zovurlar — 64", color: "#b88248", weight: 2.4 },
+  kanal: { url: "../mvp_data/geojson/kanal.geojson", label: "Kanallar — 1 615", color: "#16b8e8", weight: 2.8 },
+  zovur: { url: "../mvp_data/geojson/zovur.geojson", label: "Zovurlar — 64", color: "#b88248", weight: 3.2 },
 };
 // GitHub Pages publishes the complete static dataset. Render every available
 // polygon so the public map is a full field inventory, not a preview sample.
@@ -824,13 +824,23 @@ async function loadNetworkOverlay(networkType) {
     if (!response.ok) throw new Error(`${response.status}`);
     const data = await response.json();
     L.geoJSON(data, {
-      renderer: L.canvas({ padding: .5 }),
+      pane: "networkPane",
+      interactive: true,
+      bubblingMouseEvents: false,
+      renderer: L.canvas({ padding: .5, pane: "networkPane", tolerance: 10 }),
       style: { color: config.color, weight: config.weight, opacity: .92 },
       onEachFeature(feature, layer) {
         layer._networkBaseStyle = { color: config.color, weight: config.weight, opacity: .92 };
         layer.bindPopup(networkPopupHtml(networkType, feature.properties || {}, null, null, true), { maxWidth: 390, minWidth: 330 });
         layer.bindTooltip(networkType === "kanal" ? text(feature.properties?.kanal_nomi, "Kanal") : text(feature.properties?.kollektor_, "Zovur"), { sticky: true });
-        layer.on("click", () => {
+        layer.on("mouseover", () => {
+          if (selectedNetworkLayer !== layer) layer.setStyle({ color: "#fff200", weight: config.weight + 2, opacity: 1 });
+        });
+        layer.on("mouseout", () => {
+          if (selectedNetworkLayer !== layer) layer.setStyle(layer._networkBaseStyle);
+        });
+        layer.on("click", (event) => {
+          if (event.originalEvent) L.DomEvent.stopPropagation(event.originalEvent);
           if (selectedNetworkLayer && selectedNetworkLayer !== layer) selectedNetworkLayer.setStyle(selectedNetworkLayer._networkBaseStyle);
           selectedNetworkLayer = layer;
           layer.setStyle({ color: "#fff200", weight: Math.max(config.weight + 3, 5), opacity: 1 });
@@ -1092,6 +1102,9 @@ function initMapPage() {
   mapPromise = (async () => {
     map = L.map("map", { zoomControl: false, preferCanvas: true }).setView([38.86,65.42], 10);
     L.control.zoom({ position: "bottomright" }).addTo(map);
+    const networkPane = map.createPane("networkPane");
+    networkPane.style.zIndex = "620";
+    networkPane.style.pointerEvents = "auto";
     const imagery = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "Tiles © Esri, Maxar, Earthstar Geographics and the GIS User Community" });
     const street = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap contributors" });
     imagery.addTo(map);
