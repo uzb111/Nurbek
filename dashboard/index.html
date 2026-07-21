@@ -6,12 +6,12 @@
     <title>AgroTahlil — Yer va suv tahlili</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2317663b'/%3E%3Cpath d='M16 42C26 39 37 29 45 15c3 19-7 31-23 34M18 47c7-11 14-17 24-23' fill='none' stroke='%23fff' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="./styles.css?v=20260721-premium1" />
+    <link rel="stylesheet" href="./styles.css?v=20260721-concept2" />
   </head>
   <body>
     <div class="app-shell">
       <aside class="sidebar" aria-label="Asosiy menyu">
-        <div class="brand"><span class="brand-mark">A</span><span>Agro<span>Tahlil</span></span></div>
+        <div class="brand"><span class="brand-leaf" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M17 27C8 22 7 13 8 5c8 1 14 6 15 14-2-3-5-6-9-8 3 4 5 8 5 14m3-3c4-6 8-9 12-11-1 7-4 12-11 14"/></svg></span><span>AgroTahlil</span></div>
         <nav class="nav-list">
           <button class="nav-item active" data-view="dashboard"><span>▦</span> Umumiy tahlil</button>
           <button class="nav-item" data-view="map"><span>◇</span> Dalalar xaritasi</button>
@@ -35,7 +35,64 @@
           </div>
         </header>
 
-        <section class="view-panel" id="dashboard-view">
+        <section class="view-panel premium-overview" id="dashboard-view">
+          <header class="district-toolbar">
+            <button class="district-selector" type="button"><strong>Kasbi tumani</strong><span>⌄</span></button>
+            <div class="dashboard-actions"><span class="period-selector">▣ <span id="premium-period">2025-yil, 1-aprel — 30-sentabr</span>⌄</span><button class="report-button" id="download-report" type="button">⇩ <span>Hisobotni yuklash</span></button></div>
+          </header>
+
+          <section class="concept-kpi-grid" aria-label="Tuman asosiy ko‘rsatkichlari">
+            <article class="concept-kpi"><span class="concept-kpi-icon water">◕</span><div><p><strong id="premium-limit">—</strong><b>mln m³</b></p><span>Rasmiy suv limiti</span><small>Reja davri: aprel–sentabr 2025</small></div></article>
+            <article class="concept-kpi"><span class="concept-kpi-icon et">♦</span><div><p><strong id="premium-real-et">—</strong><b>mln m³</b></p><span>Real ET</span><small id="premium-et-note">Fazoviy ma’lumot yuklanmoqda</small></div></article>
+            <article class="concept-kpi"><span class="concept-kpi-icon gauge">◔</span><div><p><strong id="premium-fulfillment">—</strong><b>%</b></p><span>Suv limiti bajarilishi</span><small class="positive" id="premium-saving">Farq hisoblanmoqda</small></div></article>
+            <article class="concept-kpi"><span class="concept-kpi-icon field">♨</span><div><p><strong id="premium-area">—</strong><b>ga</b></p><span>Jami tahlil maydoni</span><small class="positive" id="premium-fields">— faol dala</small></div></article>
+          </section>
+
+          <section class="concept-main-grid">
+            <article class="concept-card water-balance-visual">
+              <div class="concept-card-head"><h2>Suv balansi</h2><span>mln m³</span></div>
+              <div class="concept-legend"><span><i class="dash"></i>Rasmiy suv limiti</span><span><i class="line"></i>ET (Real)</span><span><i class="rain"></i>Yog‘ingarchilik</span><span><i class="ground"></i>Sizot suvlari oqimi</span><span><i class="loss"></i>Boshqa yo‘qotishlar</span></div>
+              <div class="concept-water-chart" id="premium-water-chart"><div class="chart-loading">Suv balansi hisoblanmoqda…</div></div>
+            </article>
+
+            <article class="concept-card concept-weather" id="premium-weather">
+              <div class="concept-card-head"><h2>Ob-havo</h2><div class="weather-tabs"><button class="active" type="button">7 kunlik</button><button type="button" disabled>30 kunlik</button></div></div>
+              <div class="forecast-grid" id="premium-forecast"><div class="chart-loading">Open-Meteo yuklanmoqda…</div></div>
+              <div class="weather-summary" id="premium-weather-summary"></div>
+              <div class="weather-live-source" id="premium-weather-source">Open-Meteo</div>
+            </article>
+          </section>
+
+          <section class="concept-bottom-grid">
+            <article class="concept-card concept-small-card">
+              <div class="concept-card-head"><h2>Ekinlar taqsimoti</h2></div>
+              <div class="crop-donut-layout" id="premium-crop-distribution"><div class="chart-loading">Hisoblanmoqda…</div></div>
+              <div class="concept-card-foot"><strong id="premium-crop-count">—</strong><span>Batafsil →</span></div>
+            </article>
+            <article class="concept-card concept-small-card">
+              <div class="concept-card-head"><h2>Real ET <small>(oylik dinamikasi)</small></h2><span>mln m³</span></div>
+              <div class="monthly-et-chart" id="premium-monthly-et"><div class="chart-loading">Real ET yuklanmoqda…</div></div>
+              <div class="concept-total" id="premium-et-total">Jami: —</div>
+            </article>
+            <article class="concept-card concept-small-card">
+              <div class="concept-card-head"><h2>Ma’lumotlar sifati</h2></div>
+              <div class="quality-concept-layout"><div class="quality-concept-donut" id="premium-quality-ring"><strong id="premium-quality-score">—</strong><small>hisoblanmoqda</small></div><div class="quality-metric-list" id="premium-quality-list"></div></div>
+              <div class="concept-card-foot"><span id="premium-quality-note">5 mezonli yig‘ma baho</span><span>Batafsil →</span></div>
+            </article>
+            <article class="concept-card concept-small-card management-card">
+              <div class="concept-card-head"><h2>Rahbariyat uchun xulosa</h2></div>
+              <div class="management-list" id="premium-management-summary"><div class="chart-loading">Xulosa tayyorlanmoqda…</div></div>
+              <div class="concept-card-foot"><span>Formula asosidagi natijalar</span><span>Tavsiya etilgan choralar →</span></div>
+            </article>
+          </section>
+
+          <details class="concept-methodology">
+            <summary>Hisoblash metodikasi va ssenariy qiymatlari</summary>
+            <div class="methodology-copy"><p>Quyidagi texnik bloklarda rasmiy limit, berilgan va ishlatilgan suv, real ET, samarali yog‘in hamda sizot suvi formulalari batafsil ko‘rsatiladi.</p></div>
+          </details>
+        </section>
+
+        <section class="view-panel" id="dashboard-legacy" hidden aria-hidden="true">
           <section class="kpi-grid overview-kpis" aria-label="Asosiy ko‘rsatkichlar">
             <article class="kpi-card"><div class="kpi-icon green">▦</div><div><span class="kpi-label">Tahlil qamrovi</span><strong id="kpi-features">—</strong><small id="kpi-fields">— dala</small></div></article>
             <article class="kpi-card"><div class="kpi-icon earth">◫</div><div><span class="kpi-label">Umumiy maydon</span><strong id="kpi-area">—</strong><small>gektar</small></div></article>
@@ -250,6 +307,6 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="./app.js?v=20260721-premium1"></script>
+    <script src="./app.js?v=20260721-concept2"></script>
   </body>
 </html>

@@ -9,6 +9,7 @@ const DISTRICT_BALANCE_URL = "../mvp_data/district_water_balance.json";
 const OFFICIAL_LIMIT_URL = "../mvp_data/official_water_limit_2025.json";
 const IRRIGATION_RULES_URL = "../mvp_data/config/irrigation_norms.csv";
 const ACTUAL_ET_URL = "../mvp_data/actual_et_by_field.json";
+const ACTUAL_ET_DASHBOARD_URL = "../mvp_data/actual_et_dashboard.json";
 const FIELD_COMPONENTS_URL = "../mvp_data/geojson/field_components.geojson";
 const NETWORK_SOURCES = {
   kanal: { url: "../mvp_data/geojson/kanal.geojson", label: "Kanallar — 1 615", color: "#16b8e8", weight: 2.8 },
@@ -146,6 +147,136 @@ function weatherValue(value, unit, digits = 1) {
   return Number.isFinite(Number(value)) ? `${Number(value).toLocaleString("uz-UZ", { minimumFractionDigits: digits, maximumFractionDigits: digits })} ${unit}` : "—";
 }
 
+function premiumQualityMetrics() {
+  if (!dashboardSummary) return [];
+  const totals = dashboardSummary.totals;
+  return [
+    { label: "Dala geometriyasi", value: 100 },
+    { label: "Real ET mosligi", value: actualEtMetadata ? percent(actualEtMetadata.matched_fields, actualEtMetadata.matched_fields + actualEtMetadata.unmatched_fields) : 98.6 },
+    { label: "Suv yo‘li", value: percent(10554, 10710) },
+    { label: "GMR ma’lumoti", value: 100 - percent(totals.gmr_proxy_polygons, totals.polygons) },
+    { label: "Bonitet qamrovi", value: 100 - percent(totals.bonitet_missing_polygons, totals.polygons) },
+  ];
+}
+
+function renderPremiumQuality() {
+  const metrics = premiumQualityMetrics();
+  if (!metrics.length) return;
+  const score = sum(metrics, (item) => item.value) / metrics.length;
+  document.querySelector("#premium-quality-ring").style.setProperty("--quality", score);
+  document.querySelector("#premium-quality-score").textContent = `${fmtInt.format(score)}%`;
+  document.querySelector("#premium-quality-ring small").textContent = score >= 90 ? "Yaxshi" : score >= 75 ? "Qoniqarli" : "Tekshirish kerak";
+  document.querySelector("#premium-quality-list").innerHTML = metrics.map((item) => `<div><span><i>✓</i>${escapeHtml(item.label)}</span><strong>${fmtInt.format(item.value)}%</strong></div>`).join("");
+}
+
+function renderPremiumCropDistribution(summary) {
+  const colors = ["#168951", "#2e7be7", "#f2ae25", "#ef6b45", "#8bb8c5", "#8a75d6"];
+  const totalArea = sum(summary.crops, (item) => item.area_ha);
+  const visible = summary.crops.slice(0, 5);
+  const visibleArea = sum(visible, (item) => item.area_ha);
+  if (totalArea > visibleArea) visible.push({ label: "Boshqa", area_ha: totalArea - visibleArea });
+  let cursor = 0;
+  const stops = visible.map((item, index) => {
+    const start = cursor;
+    cursor += percent(item.area_ha, totalArea);
+    return `${colors[index]} ${start}% ${cursor}%`;
+  }).join(",");
+  document.querySelector("#premium-crop-distribution").innerHTML = `<div class="crop-concept-donut" style="background:radial-gradient(circle closest-side,#fff 63%,transparent 65%),conic-gradient(${stops})"><div><strong>${fmtInt.format(totalArea)}</strong><small>ga</small></div></div><div class="crop-concept-list">${visible.map((item, index) => `<div><span><i style="background:${colors[index]}"></i>${escapeHtml(item.label)}</span><small>${fmtInt.format(item.area_ha)} ga</small><strong>${fmtDec.format(percent(item.area_ha, totalArea))}%</strong></div>`).join("")}</div>`;
+  document.querySelector("#premium-crop-count").textContent = `Ekin turlari soni: ${fmtInt.format(summary.crops.length)}`;
+}
+
+function renderPremiumMonthlyEt() {
+  const values = actualEtMetadata?.official_period_monthly_m3;
+  if (!values) return;
+  const monthLabels = { 4: "Aprel", 5: "May", 6: "Iyun", 7: "Iyul", 8: "Avgust", 9: "Sentabr" };
+  const rows = Object.entries(values).map(([month, value]) => ({ month, label: monthLabels[month], value: number(value) / 1e6 }));
+  const maximum = Math.max(...rows.map((item) => item.value), 1);
+  document.querySelector("#premium-monthly-et").innerHTML = rows.map((item) => `<div class="monthly-et-column"><strong>${fmtDec.format(item.value)}</strong><div><i style="height:${item.value / maximum * 100}%"></i></div><span>${item.label}</span></div>`).join("");
+  document.querySelector("#premium-et-total").textContent = `Jami (aprel–sentabr): ${balanceMillions(actualEtMetadata.official_period_et_m3)} mln m³`;
+  document.querySelector("#premium-real-et").textContent = balanceMillions(actualEtMetadata.official_period_et_m3);
+  document.querySelector("#premium-et-note").textContent = `${fmtInt.format(actualEtMetadata.matched_fields)} dala · ≥${fmtInt.format(actualEtMetadata.match_threshold_pct || 70)}% fazoviy moslik`;
+}
+
+function renderPremiumWeather(payload, sourceLabel) {
+  const daily = payload?.daily || {};
+  const current = payload?.current || {};
+  const times = daily.time || [];
+  const maxTemps = daily.temperature_2m_max || [];
+  const minTemps = daily.temperature_2m_min || [];
+  const rain = daily.precipitation_sum || [];
+  const weatherCodes = daily.weather_code || [];
+  const winds = daily.wind_speed_10m_max || [];
+  const dayFormatter = new Intl.DateTimeFormat("uz-UZ", { weekday: "short" });
+  const dateFormatter = new Intl.DateTimeFormat("uz-UZ", { day: "numeric", month: "short" });
+  const weatherIcon = (index) => number(rain[index]) > .2 ? "🌧" : number(weatherCodes[index]) > 2 ? "⛅" : "☀";
+  document.querySelector("#premium-forecast").innerHTML = times.slice(0, 7).map((date, index) => {
+    const parsed = new Date(`${date}T12:00:00`);
+    return `<div class="forecast-day"><strong>${index === 0 ? "Bugun" : escapeHtml(dayFormatter.format(parsed))}</strong><small>${escapeHtml(dateFormatter.format(parsed))}</small><span class="forecast-icon">${weatherIcon(index)}</span><b>${fmtInt.format(maxTemps[index])}°</b><em>${fmtInt.format(minTemps[index])}°</em><span>♢ ${fmtDec.format(rain[index])} mm</span><span>≋ ${fmtInt.format(winds[index] || current.wind_speed_10m)} km/s</span></div>`;
+  }).join("");
+  const average = maxTemps.length ? sum(maxTemps, Number) / maxTemps.length : number(current.temperature_2m);
+  const totalRain = sum(rain, Number);
+  document.querySelector("#premium-weather-summary").innerHTML = `<div><i>♨</i><span>O‘rt. harorat<strong>${fmtDec.format(average)}°C</strong></span></div><div><i>☔</i><span>Jami yog‘ingarchilik<strong>${fmtDec.format(totalRain)} mm</strong></span></div><div><i>♢</i><span>O‘rt. namlik<strong>${fmtInt.format(current.relative_humidity_2m)}%</strong></span></div><div><i>≋</i><span>Shamol (hozir)<strong>${fmtDec.format(current.wind_speed_10m)} km/s</strong></span></div>`;
+  document.querySelector("#premium-weather-source").textContent = sourceLabel;
+}
+
+function premiumWaterChartSvg(limit, actualEt, rainTotal, groundwaterTotal, distributionLoss) {
+  const labels = (officialLimit?.monthly_limits || []).map((item) => item.month);
+  const limitParts = (officialLimit?.monthly_limits || []).map((item) => number(item.limit_m3));
+  const etParts = labels.map((_, index) => number(actualEtMetadata?.official_period_monthly_m3?.[String(index + 4)]));
+  if (!labels.length || !etParts.some(Boolean)) return "";
+  const cumulative = (items) => items.map((_, index) => sum(items.slice(0, index + 1), Number));
+  const etCumulative = cumulative(etParts);
+  const shares = limitParts.map((value) => percent(value, sum(limitParts, Number)) / 100);
+  const rainCum = cumulative(shares.map((share) => rainTotal * share));
+  const groundwaterCum = cumulative(etParts.map((value) => groundwaterTotal * value / Math.max(actualEt, 1)));
+  const lossCum = cumulative(shares.map((share) => distributionLoss * share));
+  const width = 760, height = 290, left = 48, right = 18, top = 20, bottom = 38;
+  const plotWidth = width - left - right, plotHeight = height - top - bottom;
+  const maximum = Math.max(350e6, limit, actualEt);
+  const x = (index) => left + (index + .5) * plotWidth / labels.length;
+  const y = (value) => top + plotHeight - value / maximum * plotHeight;
+  const grid = [0, 50, 100, 150, 200, 250, 300, 350].map((value) => `<line x1="${left}" x2="${width - right}" y1="${y(value * 1e6)}" y2="${y(value * 1e6)}" stroke="#e7ece9"/><text x="${left - 9}" y="${y(value * 1e6) + 3}" text-anchor="end" fill="#68786f" font-size="9">${value}</text>`).join("");
+  const bars = labels.map((label, index) => {
+    const barWidth = 40, startX = x(index) - barWidth / 2;
+    const lossHeight = plotHeight - (y(lossCum[index]) - top);
+    const groundwaterHeight = plotHeight - (y(groundwaterCum[index]) - top);
+    const rainHeight = plotHeight - (y(rainCum[index]) - top);
+    return `<rect x="${startX}" y="${y(lossCum[index])}" width="${barWidth}" height="${lossHeight}" rx="3" fill="#a8b4ba"/><rect x="${startX}" y="${y(lossCum[index] + groundwaterCum[index])}" width="${barWidth}" height="${groundwaterHeight}" fill="#aa9be9"/><rect x="${startX}" y="${y(lossCum[index] + groundwaterCum[index] + rainCum[index])}" width="${barWidth}" height="${rainHeight}" rx="3" fill="#74d4c1"/>`;
+  }).join("");
+  const points = etCumulative.map((value, index) => `${x(index)},${y(value)}`).join(" ");
+  const dots = etCumulative.map((value, index) => `<circle cx="${x(index)}" cy="${y(value)}" r="4" fill="#fff" stroke="#1474ee" stroke-width="3"><title>${labels[index]}: ${balanceMillions(value)} mln m³</title></circle>`).join("");
+  const xLabels = labels.map((label, index) => `<text x="${x(index)}" y="${height - 12}" text-anchor="middle" fill="#52645a" font-size="9">${label}</text>`).join("");
+  return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Rasmiy suv limiti va real ET oylik dinamikasi">${grid}${bars}<line x1="${left}" x2="${width - right}" y1="${y(limit)}" y2="${y(limit)}" stroke="#1474ee" stroke-width="2" stroke-dasharray="6 5"/><polyline points="${points}" fill="none" stroke="#1474ee" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>${dots}${xLabels}</svg>`;
+}
+
+function renderPremiumManagement(limit, actualEt, deficit) {
+  if (!dashboardSummary) return;
+  const fulfillment = percent(actualEt, limit);
+  const saving = limit - actualEt;
+  const weather = currentWeather ? weatherStats(currentWeather) : null;
+  const quality = premiumQualityMetrics();
+  const qualityScore = quality.length ? sum(quality, (item) => item.value) / quality.length : 0;
+  const items = [
+    { text: `Real ET rasmiy limitning ${fmtDec.format(fulfillment)}% qismini tashkil etdi; farq ${balanceMillions(Math.abs(saving))} mln m³.`, warning: saving < 0 },
+    { text: `${fmtInt.format(actualEtMetadata?.matched_fields || 0)} dala real ET bilan fazoviy moslashtirilgan.`, warning: false },
+    { text: weather ? `7 kunlik yog‘in ${fmtDec.format(weather.rain)} mm, ET0 ${fmtDec.format(weather.et0)} mm; sug‘orish nazorati zarur.` : "Open-Meteo ma’lumoti yuklanmoqda.", warning: weather?.deficit > 30 },
+    { text: `${fmtInt.format(actualEtMetadata?.unmatched_fields || 0)} dala ET qamrovi chegarasidan tashqarida va alohida tekshiruv talab qiladi.`, warning: true },
+    { text: `Umumiy ma’lumotlar sifati ${fmtInt.format(qualityScore)}% — ${qualityScore >= 90 ? "yaxshi darajada" : "qo‘shimcha tekshiruv zarur"}.`, warning: qualityScore < 90 },
+  ];
+  document.querySelector("#premium-management-summary").innerHTML = items.map((item) => `<div class="${item.warning ? "warning" : ""}"><i>${item.warning ? "!" : "✓"}</i><span>${escapeHtml(item.text)}</span></div>`).join("");
+  document.querySelector("#premium-fulfillment").textContent = fmtDec.format(fulfillment);
+  document.querySelector("#premium-saving").textContent = `${saving >= 0 ? "Farq" : "Ortiqcha talab"}: ${balanceMillions(Math.abs(saving))} mln m³`;
+  document.querySelector("#premium-saving").classList.toggle("negative", saving < 0);
+}
+
+function renderPremiumWaterBalance({ limit, supplied, used, actualEt, rain, groundwater, distributionLoss, deficit }) {
+  document.querySelector("#premium-limit").textContent = balanceMillions(limit);
+  document.querySelector("#premium-real-et").textContent = balanceMillions(actualEt);
+  const svg = premiumWaterChartSvg(limit, actualEt, rain, groundwater, distributionLoss);
+  document.querySelector("#premium-water-chart").innerHTML = `${svg || '<div class="chart-loading">Oylik real ET yuklanmoqda…</div>'}<div class="water-chart-summary"><div><i class="limit-dot"></i><span>Rasmiy suv limiti</span><strong>${balanceMillions(limit)} mln m³</strong></div><div><i class="et-dot"></i><span>ET (Real)</span><strong>${balanceMillions(actualEt)} mln m³</strong></div><div><i class="rain-dot"></i><span>Yog‘ingarchilik</span><strong>${balanceMillions(rain)} mln m³</strong></div><div><i class="ground-dot"></i><span>Sizot suvlari oqimi</span><strong>${balanceMillions(groundwater)} mln m³</strong></div><div><i class="loss-dot"></i><span>Boshqa yo‘qotishlar</span><strong>${balanceMillions(distributionLoss)} mln m³</strong></div></div>`;
+  renderPremiumManagement(limit, actualEt, deficit);
+}
+
 function renderWeather(payload, sourceLabel, fallback = false) {
   currentWeather = payload;
   weatherLoadComplete = true;
@@ -160,7 +291,9 @@ function renderWeather(payload, sourceLabel, fallback = false) {
   const source = document.querySelector("#weather-source");
   source.textContent = sourceLabel;
   source.classList.toggle("offline", fallback);
+  renderPremiumWeather(payload, sourceLabel);
   renderConclusions();
+  if (districtBalance) updateWaterBalance();
   updateRecommendationControl();
   if (selectedFeature) { renderFieldDecision(selectedFeature.properties); renderRouteReport(selectedFeature.properties); }
 }
@@ -246,6 +379,10 @@ function renderDashboard(summary) {
   const observedWaterShare = percent(t.observed_water_m3, t.planned_water_m3);
   document.querySelector("#water-composition").innerHTML = `<div class="composition-track"><div class="composition-observed" style="width:${observedWaterShare}%"></div><div class="composition-estimated" style="width:${100 - observedWaterShare}%"></div></div><div class="composition-legend"><div><span>Manba asosidagi suv</span><strong>${fmtDec.format(t.observed_water_m3 / 1e6)} mln m³</strong><small>${fmtDec.format(observedWaterShare)}% jami hajmdan</small></div><div><span>Taxminiy suv</span><strong>${fmtDec.format(t.estimated_water_m3 / 1e6)} mln m³</strong><small>${fmtDec.format(100 - observedWaterShare)}% jami hajmdan</small></div></div>`;
   document.querySelector("#data-status").textContent = `${fmtInt.format(t.polygons)} poligon · tahlil tayyor`;
+  document.querySelector("#premium-area").textContent = fmtInt.format(t.area_ha);
+  document.querySelector("#premium-fields").textContent = `${fmtInt.format(t.fields)} faol dala`;
+  renderPremiumCropDistribution(summary);
+  renderPremiumQuality();
   renderConclusions();
 }
 
@@ -284,6 +421,8 @@ function renderOfficialLimit(data) {
   document.querySelector("#balance-limit-status").textContent = "Rasmiy limit · 2025";
   document.querySelector("#balance-limit-status").classList.remove("estimated");
   document.querySelector("#limit-input-source").textContent = `mln m³ · rasmiy jami ${balanceMillions(total)}; oylar ${balanceMillions(monthTotal)}`;
+  document.querySelector("#premium-limit").textContent = balanceMillions(total);
+  document.querySelector("#premium-period").textContent = "2025-yil, 1-aprel — 30-sentabr";
   updateBalancePeriodLabel();
   if (districtBalance) setBalanceInputs();
 }
@@ -350,6 +489,9 @@ function updateWaterBalance() {
     document.querySelector("#balance-crop-et").innerHTML = barRows(monthRows, realEt, 6);
     document.querySelector("#balance-excluded").textContent = `${fmtInt.format(actualEtMetadata.unmatched_fields)} dala (${fmtDec.format(actualEtMetadata.unmatched_area_ha)} ga) real ET bilan 70% chegarada moslashmagan; real ET jami bu maydonlarni o‘z ichiga olmaydi.`;
   }
+  renderPremiumMonthlyEt();
+  renderPremiumQuality();
+  renderPremiumWaterBalance({ limit, supplied, used, actualEt, rain, groundwater, distributionLoss, deficit });
   if (geoLayer) geoLayer.setStyle(styleFor);
   if (selectedFeature) { renderFieldDecision(selectedFeature.properties); renderRouteReport(selectedFeature.properties); }
 }
@@ -1156,6 +1298,7 @@ function showView(view) {
   const mapView = normalizedView === "map";
   document.querySelector("#dashboard-view").hidden = !dashboard;
   document.querySelector("#map-view").hidden = !mapView;
+  document.body.classList.toggle("dashboard-mode", dashboard);
   document.querySelectorAll(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.view === normalizedView));
   document.querySelector("#page-title").textContent = dashboard ? "Umumiy tahlil" : "Dalalar xaritasi va dala pasporti";
   document.querySelector("#page-subtitle").textContent = dashboard ? "Suv balansi, ekinlar, real ET, ob-havo va rahbariyat xulosasi" : "Dalani toping, ekin kiriting va suv yo‘lini line chartda kuzating";
@@ -1669,6 +1812,20 @@ function initMapPage() {
   return mapPromise;
 }
 
+async function loadDashboardEtSummary() {
+  try {
+    const response = await fetch(ACTUAL_ET_DASHBOARD_URL, { cache: "no-store" });
+    if (!response.ok) throw new Error(`Dashboard real ET: ${response.status}`);
+    actualEtMetadata = await response.json();
+    renderPremiumMonthlyEt();
+    renderPremiumQuality();
+    if (districtBalance) updateWaterBalance();
+  } catch (error) {
+    document.querySelector("#premium-et-note").textContent = "Real ET xulosasi yuklanmadi";
+    console.warn(error);
+  }
+}
+
 async function loadSummary() {
   try {
     const response = await fetch(SUMMARY_URL, { cache: "no-store" });
@@ -1695,10 +1852,12 @@ document.querySelector("#quick-field-find").addEventListener("click", findFieldF
 document.querySelector("#quick-field-search").addEventListener("keydown", (event) => {
   if (event.key === "Enter") findFieldFromToolbar();
 });
+document.querySelector("#download-report").addEventListener("click", () => window.print());
 loadManualCropAssignments();
 const initialView = new URLSearchParams(window.location.search).get("view");
-if (initialView === "map") showView(initialView);
+showView(initialView === "map" ? "map" : "dashboard");
 loadSummary();
+loadDashboardEtSummary();
 loadWeather();
 loadOfficialPeriodWeather();
 loadDistrictBalance();

@@ -11,6 +11,7 @@ Interfeys rahbariyat va amaliy GIS ishlari uchun ikki aniq vazifaga ajratildi:
 - `premium-field-map-concept.png` — dala xaritasi va tahlil ekrani uchun generativ premium konsept.
 - `implemented-dashboard.png` — amaldagi koddan olingan tekshiruv rasmi.
 - `implemented-map.png` — amaldagi xarita ekranidan olingan tekshiruv rasmi.
+- `concept-dashboard-implemented-v2.png` — tanlangan premium konseptga mos qayta qurilgan yakuniy dashboard.
 
 ## Asosiy UI qoidalari
 
