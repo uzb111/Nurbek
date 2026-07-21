@@ -1,0 +1,21 @@
+{
+  "source_file": "ET_qashqadarya_20260129_1143.shp",
+  "source": "real_et_spatial_summary",
+  "period": "2025-04-01/2025-09-30",
+  "match_threshold_pct": 70,
+  "matched_fields": 10563,
+  "unmatched_fields": 147,
+  "matched_area_ha": 61362.26207453103,
+  "unmatched_area_ha": 559.8621772255739,
+  "official_period_et_m3": 301156595.47081333,
+  "official_period_groundwater_m3": 31699699.343436807,
+  "official_period_monthly_m3": {
+    "4": 28633405.06723436,
+    "5": 48627902.10672688,
+    "6": 26242030.690032076,
+    "7": 71701966.23935564,
+    "8": 73148723.73932461,
+    "9": 52802567.62813821
+  },
+  "calculation": "field_et_m3 distributed by each field monthly_mm share; fields matched at >=70% spatial overlap"
+}
