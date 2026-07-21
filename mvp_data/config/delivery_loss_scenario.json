@@ -1,0 +1,6 @@
+{
+  "allocation_mode": "proportional_to_png_seasonal_need",
+  "loss_per_route_level_percent": 1.5,
+  "loss_status": "scenario_assumption_not_measured",
+  "note": "Har bir pastki suv yo'li bosqichi uchun 1,5% yo'qotish faqat ssenariy. Uni kanal o'lchovi bilan almashtirish kerak."
+}

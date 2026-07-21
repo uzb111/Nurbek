@@ -1,5 +1,5 @@
 const SUMMARY_URL = "../mvp_data/dashboard_summary.json";
-const DATA_URL = "../mvp_data/geojson/fields_demo_mvp.geojson";
+const DATA_URL = "../mvp_data/geojson/fields_delivery_2025.geojson";
 const WEATHER_SNAPSHOT_URL = "../mvp_data/open_meteo_weather.json";
 const WEATHER_API_URL = "/api/open-meteo";
 const DISTRICT_BALANCE_URL = "../mvp_data/district_water_balance.json";
@@ -271,7 +271,26 @@ function currentDistrictUsedM3() {
   return input || districtBalance.editable_defaults.used_m3;
 }
 
+function deliveryScenario(properties) {
+  if (properties.delivery_calc_status !== "scenario_ready") return null;
+  const activeLimit = number(document.querySelector("#input-water-limit")?.value) * 1e6 || number(properties.official_limit_m3);
+  const need = number(properties.seasonal_need_m3);
+  const districtNeed = number(properties.district_need_m3);
+  const lossPct = number(properties.route_loss_pct_scn);
+  if (!activeLimit || !need || !districtNeed) return null;
+  const sourceShare = activeLimit * need / districtNeed;
+  const delivery = sourceShare * (1 - lossPct / 100);
+  return { sourceShare, lossPct, lossM3: sourceShare - delivery, delivery, coverage: delivery / need, need };
+}
+
 function fieldWaterAnalysis(properties) {
+  const delivery = deliveryScenario(properties);
+  if (delivery) {
+    const coverage = delivery.coverage;
+    const key = coverage >= 1 ? "sufficient" : coverage >= .85 ? "limited" : coverage >= .65 ? "shortage" : "severe";
+    const area = Math.max(number(properties.maydoni), .001);
+    return { key, coverage, availableM3Ha: delivery.delivery / area, demandM3Ha: delivery.need / area, rainMm: 0, groundwaterMm: 0, delivery };
+  }
   if (!districtBalance) return { key: "limited", coverage: 0, availableM3Ha: 0, demandM3Ha: 0, rainMm: 0, groundwaterMm: 0 };
   const crop = districtBalance.crop_groups.find((group) => group.group === properties.crop_group_mvp);
   const etcMm = crop?.etc_mm || 0;
@@ -338,7 +357,13 @@ function renderFieldDecision(properties) {
   const bar = document.querySelector("#field-water-bar");
   bar.style.width = `${Math.min(water.coverage * 100, 100)}%`;
   bar.style.background = waterMeta.color;
-  document.querySelector("#field-water-reason").textContent = `Sabab: tumandagi foydali suv ${fmtInt.format(water.availableM3Ha)} m³/ga, ushbu ekin uchun ET asosidagi sof talab ${fmtInt.format(water.demandM3Ha)} m³/ga. Samarali yog‘in ${fmtDec.format(water.rainMm)} mm, GMR bo‘yicha sizot hissasi ${fmtDec.format(water.groundwaterMm)} mm.`;
+  document.querySelector("#field-water-reason").textContent = water.delivery ? `Sabab: rasmiy limitdan poligonning normativ ulushi ${fmtInt.format(water.delivery.sourceShare)} m³. Suv yo‘li ssenariysidagi ${fmtDec.format(water.delivery.lossPct)}% yo‘qotishdan keyin ${fmtInt.format(water.delivery.delivery)} m³ yetadi.` : `Sabab: tumandagi foydali suv ${fmtInt.format(water.availableM3Ha)} m³/ga, ushbu ekin uchun ET asosidagi sof talab ${fmtInt.format(water.demandM3Ha)} m³/ga. Samarali yog‘in ${fmtDec.format(water.rainMm)} mm, GMR bo‘yicha sizot hissasi ${fmtDec.format(water.groundwaterMm)} mm.`;
+  if (water.delivery && !document.querySelector("#field-delivery-plan").hidden) {
+    document.querySelector("#field-source-share").textContent = `${fmtInt.format(water.delivery.sourceShare)} m³`;
+    document.querySelector("#field-route-loss").textContent = `${fmtDec.format(water.delivery.lossPct)}% · ${fmtInt.format(water.delivery.lossM3)} m³`;
+    document.querySelector("#field-delivery-water").textContent = `${fmtInt.format(water.delivery.delivery)} m³`;
+    document.querySelector("#field-delivery-formula").textContent = `${fmtInt.format(number(document.querySelector("#input-water-limit").value) * 1e6)} × ${fmtInt.format(number(properties.seasonal_need_m3))} / ${fmtInt.format(number(properties.district_need_m3))} × (1 − ${fmtDec.format(water.delivery.lossPct)}%) = ${fmtInt.format(water.delivery.delivery)} m³`;
+  }
 
   const bonitet = number(properties.bonitet);
   const soilLabel = !bonitet ? "Bonitet ma’lumoti yo‘q" : bonitet >= 80 ? "Yuqori unumdor tuproq" : bonitet >= 60 ? "Yaxshi unumdor tuproq" : bonitet >= 40 ? "O‘rtacha unumdor tuproq" : "Past unumdor tuproq";
@@ -733,6 +758,18 @@ function selectField(feature, layer) {
   document.querySelector("#field-window").textContent = p.irrigation_start_mvp ? `${p.irrigation_start_mvp} — ${p.irrigation_end_mvp}` : "—";
   document.querySelector("#field-norm-status").textContent = meta.label;
   document.querySelector("#field-season-formula").textContent = `${fmtDec.format(number(p.maydoni))} ga × ${fmtInt.format(number(p.norm_m3ha_mvp))} m³/ga = ${fmtInt.format(number(p.planned_water_m3_mvp))} m³`;
+
+  const delivery = deliveryScenario(p);
+  const deliveryPanel = document.querySelector("#field-delivery-plan");
+  deliveryPanel.hidden = !delivery;
+  if (delivery) {
+    document.querySelector("#field-delivery-route").textContent = text(p.water_route, "Suv yo‘li aniqlanmagan");
+    document.querySelector("#field-source-share").textContent = `${fmtInt.format(delivery.sourceShare)} m³`;
+    document.querySelector("#field-route-loss").textContent = `${fmtDec.format(delivery.lossPct)}% · ${fmtInt.format(delivery.lossM3)} m³`;
+    document.querySelector("#field-delivery-water").textContent = `${fmtInt.format(delivery.delivery)} m³`;
+    document.querySelector("#field-delivery-formula").textContent = `${fmtInt.format(number(document.querySelector("#input-water-limit").value) * 1e6)} × ${fmtInt.format(number(p.seasonal_need_m3))} / ${fmtInt.format(number(p.district_need_m3))} × (1 − ${fmtDec.format(delivery.lossPct)}%) = ${fmtInt.format(delivery.delivery)} m³`;
+    document.querySelector("#field-delivery-note").textContent = `${fmtInt.format(number(p.branch_field_count))} poligon bir blokda; jami normativ talab ${fmtInt.format(number(p.branch_need_m3))} m³. Yo‘qotish har bosqichga 1,5% ssenariy, o‘lchangan sarf emas.`;
+  }
 
   const analysis = fieldWeatherCalculation(p);
   if (analysis) {
