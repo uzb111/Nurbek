@@ -99,17 +99,22 @@
               <h2 id="balance-district">Kasbi tumani</h2>
               <p id="balance-period">Davr yuklanmoqda…</p>
             </div>
-            <div class="balance-badges"><span>Open-Meteo ET</span><span class="estimated">Limit va sarf — taxminiy</span></div>
+            <div class="balance-badges"><span>Open-Meteo ET</span><span id="balance-limit-status" class="estimated">Limit yuklanmoqda…</span></div>
           </section>
 
           <section class="balance-input-card card">
-            <div class="card-heading"><div><span class="eyebrow">KIRISH QIYMATLARI</span><h2>Limit va amaldagi suvni kiriting</h2><p>Rasmiy raqam kelganda qiymatni o‘zgartiring — barcha xulosalar avtomatik yangilanadi.</p></div></div>
+            <div class="card-heading"><div><span class="eyebrow">KIRISH QIYMATLARI</span><h2>Limit va amaldagi suvni kiriting</h2><p>Rasmiy limit avtomatik yuklanadi; berilgan va ishlatilgan suv o‘lchov ma’lumoti kelganda almashtiriladi.</p></div></div>
             <div class="balance-inputs">
-              <label><span>Umumiy suv limiti</span><input id="input-water-limit" type="number" min="0" step="0.1" /><small>mln m³ · hozir normativ talab asosida</small></label>
+              <label><span>Umumiy suv limiti</span><input id="input-water-limit" type="number" min="0" step="0.1" /><small id="limit-input-source">mln m³ · rasmiy ma’lumot yuklanmoqda</small></label>
               <label><span>Amalda berilgan suv</span><input id="input-water-supplied" type="number" min="0" step="0.1" /><small>mln m³ · hozir limitning 88% taxmini</small></label>
               <label><span>Dalalarda ishlatilgan suv</span><input id="input-water-used" type="number" min="0" step="0.1" /><small>mln m³ · hozir berilgan suvning 82% taxmini</small></label>
               <button id="balance-reset" class="balance-reset" type="button">Boshlang‘ich qiymatni tiklash</button>
             </div>
+          </section>
+
+          <section class="card official-limit-card" id="official-limit-card" hidden>
+            <div class="card-heading"><div><span class="eyebrow">RASMIY SUV LIMITI</span><h2 id="official-limit-title">—</h2><p id="official-limit-note">—</p></div><strong class="official-total" id="official-limit-total">—</strong></div>
+            <div class="official-months" id="official-limit-months"></div>
           </section>
 
           <section class="kpi-grid balance-kpis">

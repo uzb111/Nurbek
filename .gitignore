@@ -32,6 +32,7 @@ mvp_data/config/field_zone_review_*.csv
 !mvp_data/dashboard_summary.json
 !mvp_data/district_water_balance.json
 !mvp_data/open_meteo_weather.json
+!mvp_data/official_water_limit_2025.json
 
 # Local design references and source images
 design_concepts/

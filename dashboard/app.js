@@ -3,6 +3,7 @@ const DATA_URL = "../mvp_data/geojson/fields_demo_mvp.geojson";
 const WEATHER_SNAPSHOT_URL = "../mvp_data/open_meteo_weather.json";
 const WEATHER_API_URL = "/api/open-meteo";
 const DISTRICT_BALANCE_URL = "../mvp_data/district_water_balance.json";
+const OFFICIAL_LIMIT_URL = "../mvp_data/official_water_limit_2025.json";
 const IRRIGATION_RULES_URL = "../mvp_data/config/irrigation_norms.csv";
 const NETWORK_SOURCES = {
   kanal: { url: "../mvp_data/geojson/kanal.geojson", label: "Kanallar — 1 615", color: "#16b8e8", weight: 1.8 },
@@ -38,6 +39,7 @@ const CROP_PROFILES = {
 let dashboardSummary = null;
 let currentWeather = null;
 let districtBalance = null;
+let officialLimit = null;
 let irrigationRules = [];
 let map = null;
 let geoLayer = null;
@@ -155,10 +157,38 @@ function balanceMillions(value) { return fmtDec.format(number(value) / 1e6); }
 function setBalanceInputs() {
   if (!districtBalance) return;
   const defaults = districtBalance.editable_defaults;
-  document.querySelector("#input-water-limit").value = (defaults.limit_m3 / 1e6).toFixed(1);
+  const limit = officialLimit?.total_limit_m3 ?? defaults.limit_m3;
+  document.querySelector("#input-water-limit").value = (limit / 1e6).toFixed(2);
   document.querySelector("#input-water-supplied").value = (defaults.supplied_m3 / 1e6).toFixed(1);
   document.querySelector("#input-water-used").value = (defaults.used_m3 / 1e6).toFixed(1);
   updateWaterBalance();
+}
+
+function renderOfficialLimit(data) {
+  officialLimit = data;
+  const total = number(data.total_limit_m3);
+  const monthTotal = sum(data.monthly_limits || [], (item) => item.limit_m3);
+  const maximum = Math.max(...(data.monthly_limits || []).map((item) => number(item.limit_m3)), 1);
+  document.querySelector("#official-limit-card").hidden = false;
+  document.querySelector("#official-limit-title").textContent = `${data.district} · ${data.period.label}`;
+  document.querySelector("#official-limit-total").textContent = `${balanceMillions(total)} mln m³`;
+  document.querySelector("#official-limit-note").textContent = `${data.period.start} — ${data.period.end}. ${data.source.note}`;
+  document.querySelector("#official-limit-months").innerHTML = (data.monthly_limits || []).map((item) => `<div class="official-month"><div><strong>${escapeHtml(item.month)}</strong><span>${balanceMillions(item.limit_m3)} mln m³</span></div><div class="official-track"><i style="width:${number(item.limit_m3) / maximum * 100}%"></i></div></div>`).join("");
+  document.querySelector("#balance-limit-status").textContent = "Rasmiy limit · 2025";
+  document.querySelector("#balance-limit-status").classList.remove("estimated");
+  document.querySelector("#limit-input-source").textContent = `mln m³ · rasmiy jami ${balanceMillions(total)}; oylar ${balanceMillions(monthTotal)}`;
+  if (districtBalance) setBalanceInputs();
+}
+
+async function loadOfficialLimit() {
+  try {
+    const response = await fetch(OFFICIAL_LIMIT_URL, { cache: "no-store" });
+    if (!response.ok) throw new Error(`Rasmiy limit yuklanmadi: ${response.status}`);
+    renderOfficialLimit(await response.json());
+  } catch (error) {
+    document.querySelector("#balance-limit-status").textContent = "Limit — taxminiy";
+    console.warn(error);
+  }
 }
 
 function updateWaterBalance() {
@@ -842,4 +872,5 @@ if (initialView === "map" || initialView === "water-balance") showView(initialVi
 loadSummary();
 loadWeather();
 loadDistrictBalance();
+loadOfficialLimit();
 loadIrrigationRules();

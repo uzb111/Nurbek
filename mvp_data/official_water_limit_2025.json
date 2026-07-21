@@ -1,0 +1,25 @@
+{
+  "district": "Kasbi tumani",
+  "period": {
+    "start": "2025-04-01",
+    "end": "2025-10-01",
+    "label": "2025-yil vegetatsiya davri"
+  },
+  "total_limit_m3": 307490000,
+  "unit": "m3",
+  "monthly_limits": [
+    { "month": "Aprel", "limit_m3": 48430000 },
+    { "month": "May", "limit_m3": 32590000 },
+    { "month": "Iyun", "limit_m3": 57830000 },
+    { "month": "Iyul", "limit_m3": 92010000 },
+    { "month": "Avgust", "limit_m3": 53180000 },
+    { "month": "Sentabr", "limit_m3": 23460000 }
+  ],
+  "source": {
+    "type": "official_limit",
+    "provider": "Lex.uz ma'lumotidan foydalanuvchi taqdim etgan jadval",
+    "verification_status": "document_url_pending",
+    "note": "Oylar yig'indisi yaxlitlash tufayli 307,50 mln m3; rasmiy jami 307,49 mln m3 hisobda ustun olinadi."
+  },
+  "data_status": "official_total_months_rounded"
+}
