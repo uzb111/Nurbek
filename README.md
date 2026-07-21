@@ -11,6 +11,8 @@ dashboard hamda ma’lumotlarni tayyorlash skriptlari.
   Open-Meteo ma’lumotlarini tayyorlash skriptlari.
 - `prepare_mvp_data.py`, `build_irrigation_mvp.py`, `build_demo_proxy.py` —
   GIS qatlamlarini tayyorlash va normativ atributlarni biriktirish skriptlari.
+- `build_real_project_model.py` — real loyiha uchun yagona dala konturi,
+  tahliliy tuproq/GMR bo‘laklari hamda kanal/zovur endpoint QA modelini quradi.
 - `TAHLIL_FORMULALARI.md` — suv balansi, dala holati, ekin tavsiyasi va split
   ssenariysi formulalari.
 - `mvp_data/config/` — ekin guruhlari va sug‘orish normativlari konfiguratsiyasi.

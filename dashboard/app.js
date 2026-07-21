@@ -4,6 +4,10 @@ const WEATHER_SNAPSHOT_URL = "../mvp_data/open_meteo_weather.json";
 const WEATHER_API_URL = "/api/open-meteo";
 const DISTRICT_BALANCE_URL = "../mvp_data/district_water_balance.json";
 const IRRIGATION_RULES_URL = "../mvp_data/config/irrigation_norms.csv";
+const NETWORK_SOURCES = {
+  kanal: { url: "../mvp_data/geojson/kanal.geojson", label: "Kanallar — 1 615", color: "#16b8e8", weight: 1.8 },
+  zovur: { url: "../mvp_data/geojson/zovur.geojson", label: "Zovurlar — 64", color: "#b88248", weight: 2.4 },
+};
 // GitHub Pages publishes the complete static dataset. Render every available
 // polygon so the public map is a full field inventory, not a preview sample.
 const MAP_FEATURE_LIMIT = Number.POSITIVE_INFINITY;
@@ -42,6 +46,8 @@ let selectedLayer = null;
 let selectedFeature = null;
 let mapPromise = null;
 let splitState = { active: false, parent: null, points: [], markers: [], line: null, layer: null, parts: [], scenarioId: null };
+let networkGroups = {};
+const networkLoadState = new Set();
 
 const fmtInt = new Intl.NumberFormat("uz-UZ", { maximumFractionDigits: 0 });
 const fmtDec = new Intl.NumberFormat("uz-UZ", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -594,6 +600,42 @@ function popupHtml(properties) {
   return `<h3 class="popup-title">${escapeHtml(text(properties.crop_mvp, "Ekin ko‘rsatilmagan"))}</h3><p class="popup-line">Maydon: <strong>${fmtDec.format(number(properties.maydoni))} ga</strong></p><p class="popup-line">GMR: <strong>${escapeHtml(text(properties.gmr_mvp))}</strong> · Zona: <strong>${escapeHtml(text(properties.irrigation_zone))}</strong></p>${waterLine}<p class="popup-line" style="color:${meta.color}">${meta.label}</p>`;
 }
 
+function networkPopupHtml(networkType, properties) {
+  const isCanal = networkType === "kanal";
+  const title = isCanal ? text(properties.kanal_nomi, "Nomsiz kanal") : text(properties.kollektor_, "Nomsiz zovur");
+  const length = isCanal ? number(properties.uzunlik) : number(properties.Lenght);
+  const lengthText = length ? `${fmtDec.format(length)} km` : "—";
+  const level = isCanal ? text(properties.daraja_1, text(properties.level)) : text(properties.db_ddnm0_h);
+  const location = isCanal ? text(properties.id) : text(properties.joylashgan);
+  return `<h3 class="popup-title">${escapeHtml(title)}</h3><p class="popup-line">Turi: <strong>${isCanal ? "Sug‘orish kanali" : "Zovur / kollektor"}</strong></p><p class="popup-line">Uzunligi: <strong>${lengthText}</strong> · Daraja: <strong>${escapeHtml(String(level))}</strong></p><p class="popup-line">Manba kodi yoki joylashuvi: <strong>${escapeHtml(String(location))}</strong></p><p class="popup-line">Chiziqning start/end nuqtalari hozircha raqamlashtirish yo‘nalishi; oqim yo‘nalishi sifatida tasdiqlanmagan.</p>`;
+}
+
+async function loadNetworkOverlay(networkType) {
+  if (networkLoadState.has(networkType)) return;
+  const config = NETWORK_SOURCES[networkType];
+  const group = networkGroups[networkType];
+  if (!config || !group) return;
+  networkLoadState.add(networkType);
+  try {
+    const response = await fetch(config.url);
+    if (!response.ok) throw new Error(`${response.status}`);
+    const data = await response.json();
+    L.geoJSON(data, {
+      renderer: L.canvas({ padding: .5 }),
+      style: { color: config.color, weight: config.weight, opacity: .92 },
+      onEachFeature(feature, layer) {
+        layer.bindPopup(networkPopupHtml(networkType, feature.properties || {}));
+        layer.bindTooltip(networkType === "kanal" ? text(feature.properties?.kanal_nomi, "Kanal") : text(feature.properties?.kollektor_, "Zovur"), { sticky: true });
+      },
+    }).addTo(group);
+  } catch (error) {
+    networkLoadState.delete(networkType);
+    if (map.hasLayer(group)) map.removeLayer(group);
+    document.querySelector("#map-hint").textContent = `${config.label} qatlami yuklanmadi: ${error.message}`;
+    console.error(error);
+  }
+}
+
 function renderLayer(features) {
   if (geoLayer) map.removeLayer(geoLayer);
   selectedLayer = null;
@@ -750,7 +792,12 @@ function initMapPage() {
     const imagery = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "Tiles © Esri, Maxar, Earthstar Geographics and the GIS User Community" });
     const street = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap contributors" });
     imagery.addTo(map);
-    L.control.layers({ "ArcGIS World Imagery": imagery, "Oddiy xarita": street }, null, { position: "topright", collapsed: false }).addTo(map);
+    networkGroups = { kanal: L.layerGroup(), zovur: L.layerGroup() };
+    L.control.layers({ "ArcGIS World Imagery": imagery, "Oddiy xarita": street }, { [NETWORK_SOURCES.kanal.label]: networkGroups.kanal, [NETWORK_SOURCES.zovur.label]: networkGroups.zovur }, { position: "topright", collapsed: false }).addTo(map);
+    map.on("overlayadd", ({ layer }) => {
+      const networkType = Object.keys(networkGroups).find((key) => networkGroups[key] === layer);
+      if (networkType) loadNetworkOverlay(networkType);
+    });
     try {
       const response = await fetch(DATA_URL);
       if (!response.ok) throw new Error(`GeoJSON yuklanmadi: ${response.status}`);

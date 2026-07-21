@@ -7,6 +7,7 @@ __pycache__/
 # or approved object storage instead.
 Smart_agriculture.gdb/
 mvp_data_partial_*/
+real_project_data/
 mvp_data/Smart_agriculture_mvp.gdb/
 mvp_data/geojson/*
 mvp_data/*.json
@@ -25,6 +26,8 @@ mvp_data/config/field_zone_review_*.csv
 # The deployable dashboard dataset. This is deliberately included because the
 # public GitHub Pages site must display all field polygons without a local API.
 !mvp_data/geojson/fields_demo_mvp.geojson
+!mvp_data/geojson/kanal.geojson
+!mvp_data/geojson/zovur.geojson
 !mvp_data/dashboard_summary.json
 !mvp_data/district_water_balance.json
 !mvp_data/open_meteo_weather.json
