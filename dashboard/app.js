@@ -49,7 +49,11 @@ let selectedFeature = null;
 let mapPromise = null;
 let splitState = { active: false, parent: null, points: [], markers: [], line: null, layer: null, parts: [], scenarioId: null };
 let networkGroups = {};
+let waterRouteIndex = new Map();
+let fieldGeometryIndex = [];
+let selectedNetworkLayer = null;
 const networkLoadState = new Set();
+const networkSpatialCache = new Map();
 
 const fmtInt = new Intl.NumberFormat("uz-UZ", { maximumFractionDigits: 0 });
 const fmtDec = new Intl.NumberFormat("uz-UZ", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -655,14 +659,158 @@ function popupHtml(properties) {
   return `<h3 class="popup-title">${escapeHtml(text(properties.crop_mvp, "Ekin ko‘rsatilmagan"))}</h3><p class="popup-line">Maydon: <strong>${fmtDec.format(number(properties.maydoni))} ga</strong></p><p class="popup-line">GMR: <strong>${escapeHtml(text(properties.gmr_mvp))}</strong> · Zona: <strong>${escapeHtml(text(properties.irrigation_zone))}</strong></p>${waterLine}<p class="popup-line" style="color:${meta.color}">${meta.label}</p>`;
 }
 
-function networkPopupHtml(networkType, properties) {
+function networkNodeKey(value) { return String(value || "").trim().toLocaleLowerCase(); }
+
+function geometryBounds(geometry) {
+  const bounds = [Infinity, Infinity, -Infinity, -Infinity];
+  const visit = (coordinates) => {
+    if (typeof coordinates?.[0] === "number") {
+      bounds[0] = Math.min(bounds[0], coordinates[0]); bounds[1] = Math.min(bounds[1], coordinates[1]);
+      bounds[2] = Math.max(bounds[2], coordinates[0]); bounds[3] = Math.max(bounds[3], coordinates[1]);
+      return;
+    }
+    (coordinates || []).forEach(visit);
+  };
+  visit(geometry?.coordinates);
+  return bounds;
+}
+
+function buildFieldNetworkIndexes(features) {
+  waterRouteIndex = new Map();
+  fieldGeometryIndex = features.map((feature) => ({ feature, bounds: geometryBounds(feature.geometry) }));
+  features.forEach((feature) => {
+    const uniqueNodes = new Set(waterRouteParts(feature.properties).map(networkNodeKey).filter(Boolean));
+    uniqueNodes.forEach((node) => {
+      if (!waterRouteIndex.has(node)) waterRouteIndex.set(node, []);
+      waterRouteIndex.get(node).push(feature);
+    });
+  });
+  networkSpatialCache.clear();
+}
+
+function canalRouteStats(properties) {
+  const id = String(properties.id || "").trim();
+  const name = String(properties.kanal_nomi || "").trim();
+  const candidates = [id, ...((name.length > 3 && !/^\d+$/.test(name)) ? [name] : [])];
+  let matchKey = "", matches = [];
+  for (const candidate of candidates) {
+    const found = waterRouteIndex.get(networkNodeKey(candidate)) || [];
+    if (found.length) { matchKey = candidate; matches = found; break; }
+  }
+  if (!matches.length) return null;
+  const fields = new Set(), outlets = new Set(), sources = new Set(), parents = new Set();
+  let sourceShare = 0, delivered = 0, loss = 0, terminalMatches = 0;
+  matches.forEach((feature) => {
+    const p = feature.properties;
+    const route = waterRouteParts(p);
+    const matchedIndex = route.findIndex((node) => networkNodeKey(node) === networkNodeKey(matchKey));
+    const scenario = deliveryScenario(p);
+    fields.add(p.field_id || p.plan_part_id || p.feature_id);
+    if (route.length) { sources.add(route[0]); outlets.add(route[route.length - 1]); }
+    if (matchedIndex > 0) parents.add(route[matchedIndex - 1]);
+    if (matchedIndex === route.length - 1) terminalMatches += 1;
+    if (scenario) { sourceShare += scenario.sourceShare; delivered += scenario.delivery; loss += scenario.lossM3; }
+  });
+  return {
+    matchKey, polygons: matches.length, fields: fields.size, outlets: outlets.size,
+    sources: [...sources], parents: [...parents], sourceShare, delivered, loss,
+    isOutlet: terminalMatches === matches.length,
+  };
+}
+
+function boundsOverlap(first, second, padding = 0) {
+  return first[0] <= second[2] + padding && first[2] >= second[0] - padding
+    && first[1] <= second[3] + padding && first[3] >= second[1] - padding;
+}
+
+function projectCoordinate(point) { return [point[0] * 86500, point[1] * 111000]; }
+
+function pointSegmentDistanceSquared(point, start, end) {
+  const vx = end[0] - start[0], vy = end[1] - start[1];
+  const wx = point[0] - start[0], wy = point[1] - start[1];
+  const lengthSquared = vx * vx + vy * vy;
+  const ratio = lengthSquared ? Math.max(0, Math.min(1, (wx * vx + wy * vy) / lengthSquared)) : 0;
+  const dx = point[0] - (start[0] + ratio * vx), dy = point[1] - (start[1] + ratio * vy);
+  return dx * dx + dy * dy;
+}
+
+function segmentCross(first, second, point) {
+  return (second[0] - first[0]) * (point[1] - first[1]) - (second[1] - first[1]) * (point[0] - first[0]);
+}
+
+function pointOnSegment(first, second, point) {
+  return Math.abs(segmentCross(first, second, point)) < 1e-7
+    && point[0] >= Math.min(first[0], second[0]) - 1e-7 && point[0] <= Math.max(first[0], second[0]) + 1e-7
+    && point[1] >= Math.min(first[1], second[1]) - 1e-7 && point[1] <= Math.max(first[1], second[1]) + 1e-7;
+}
+
+function segmentsIntersect(firstStart, firstEnd, secondStart, secondEnd) {
+  const a = segmentCross(firstStart, firstEnd, secondStart), b = segmentCross(firstStart, firstEnd, secondEnd);
+  const c = segmentCross(secondStart, secondEnd, firstStart), d = segmentCross(secondStart, secondEnd, firstEnd);
+  return (a * b < 0 && c * d < 0) || pointOnSegment(firstStart, firstEnd, secondStart)
+    || pointOnSegment(firstStart, firstEnd, secondEnd) || pointOnSegment(secondStart, secondEnd, firstStart)
+    || pointOnSegment(secondStart, secondEnd, firstEnd);
+}
+
+function segmentDistanceSquared(firstStart, firstEnd, secondStart, secondEnd) {
+  if (segmentsIntersect(firstStart, firstEnd, secondStart, secondEnd)) return 0;
+  return Math.min(
+    pointSegmentDistanceSquared(firstStart, secondStart, secondEnd), pointSegmentDistanceSquared(firstEnd, secondStart, secondEnd),
+    pointSegmentDistanceSquared(secondStart, firstStart, firstEnd), pointSegmentDistanceSquared(secondEnd, firstStart, firstEnd),
+  );
+}
+
+function geometryNearLine(lineCoordinates, geometry, distanceMeters = 50) {
+  const lineSegments = [];
+  for (let index = 1; index < lineCoordinates.length; index += 1) {
+    lineSegments.push([projectCoordinate(lineCoordinates[index - 1]), projectCoordinate(lineCoordinates[index])]);
+  }
+  const polygons = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
+  const threshold = distanceMeters * distanceMeters;
+  for (const polygon of polygons) {
+    for (const ring of polygon) {
+      for (let index = 1; index < ring.length; index += 1) {
+        const first = projectCoordinate(ring[index - 1]), second = projectCoordinate(ring[index]);
+        if (lineSegments.some(([start, end]) => segmentDistanceSquared(start, end, first, second) <= threshold)) return true;
+      }
+    }
+  }
+  return false;
+}
+
+function networkProximityStats(feature) {
+  const key = feature.properties?.feature_id || `${feature.properties?.source_oid}-${feature.properties?.id || "network"}`;
+  if (networkSpatialCache.has(key)) return networkSpatialCache.get(key);
+  const lineBounds = geometryBounds(feature.geometry);
+  const candidates = fieldGeometryIndex.filter((item) => boundsOverlap(item.bounds, lineBounds, .0007));
+  const nearby = candidates.filter((item) => geometryNearLine(feature.geometry.coordinates, item.feature.geometry, 50));
+  const fields = new Set(nearby.map((item) => item.feature.properties.field_id || item.feature.properties.plan_part_id || item.feature.properties.feature_id));
+  const result = { polygons: nearby.length, fields: fields.size, area: sum(nearby, (item) => item.feature.properties.maydoni) };
+  networkSpatialCache.set(key, result);
+  return result;
+}
+
+function networkVolume(value) {
+  return number(value) >= 1e6 ? `${balanceMillions(value)} mln m³` : `${fmtInt.format(value)} m³`;
+}
+
+function networkPopupHtml(networkType, properties, routeStats = null, proximityStats = null, loading = false) {
   const isCanal = networkType === "kanal";
   const title = isCanal ? text(properties.kanal_nomi, "Nomsiz kanal") : text(properties.kollektor_, "Nomsiz zovur");
   const length = isCanal ? number(properties.uzunlik) : number(properties.Lenght);
   const lengthText = length ? `${fmtDec.format(length)} km` : "—";
   const level = isCanal ? text(properties.daraja_1, text(properties.level)) : text(properties.db_ddnm0_h);
   const location = isCanal ? text(properties.id) : text(properties.joylashgan);
-  return `<h3 class="popup-title">${escapeHtml(title)}</h3><p class="popup-line">Turi: <strong>${isCanal ? "Sug‘orish kanali" : "Zovur / kollektor"}</strong></p><p class="popup-line">Uzunligi: <strong>${lengthText}</strong> · Daraja: <strong>${escapeHtml(String(level))}</strong></p><p class="popup-line">Manba kodi yoki joylashuvi: <strong>${escapeHtml(String(location))}</strong></p><p class="popup-line">Chiziqning start/end nuqtalari hozircha raqamlashtirish yo‘nalishi; oqim yo‘nalishi sifatida tasdiqlanmagan.</p>`;
+  const badge = !isCanal ? "DRENAJ TARMOQI" : routeStats?.isOutlet ? "YAKUNIY QULOQ" : routeStats ? "ORALIQ KANAL" : "BOG‘LANISH ANIQLANMAGAN";
+  const loadingLine = loading ? `<p class="network-popup-loading">Dala va quloq bog‘lanishi hisoblanmoqda…</p>` : "";
+  let analysis = "";
+  if (isCanal && routeStats) {
+    analysis = `<div class="network-popup-kpis"><div><strong>${fmtInt.format(routeStats.fields)}</strong><span>suv oluvchi dala</span><small>${fmtInt.format(routeStats.polygons)} poligon</small></div><div><strong>${fmtInt.format(routeStats.outlets)}</strong><span>yakuniy quloq</span><small>quyi tarmoqda</small></div><div><strong>${networkVolume(routeStats.delivered)}</strong><span>dalalarga yetgan</span><small>${networkVolume(routeStats.loss)} yo‘qotish</small></div></div><div class="network-water-row"><div><span>Hisobiy limit</span><strong>${networkVolume(routeStats.sourceShare)}</strong></div><div><span>Bosh manba</span><strong>${escapeHtml(routeStats.sources.join(", ") || "—")}</strong></div>${routeStats.parents.length ? `<div><span>Bevosita yuqori bo‘g‘in</span><strong>${escapeHtml(routeStats.parents.join(", "))}</strong></div>` : ""}</div>`;
+  } else if (proximityStats) {
+    const label = isCanal ? "Kanalga 50 m yaqin dalalar" : "Zovurga 50 m yaqin dalalar";
+    analysis = `<div class="network-popup-kpis proximity"><div><strong>${fmtInt.format(proximityStats.fields)}</strong><span>${label}</span><small>${fmtInt.format(proximityStats.polygons)} poligon</small></div><div><strong>${fmtDec.format(proximityStats.area)} ga</strong><span>yaqin maydon</span><small>geometrik baho</small></div><div><strong>${isCanal ? "—" : "0"}</strong><span>yakuniy quloq</span><small>${isCanal ? "topologiya yo‘q" : "zovur suv bermaydi"}</small></div></div><p class="network-popup-note">${isCanal ? "Bu kanal kodi blok suv yo‘li bilan bog‘lanmagan. Yaqin dalalar suv oluvchi dala sifatida tasdiqlanmagan." : "Zovur sug‘orish suvi bermaydi; u sizot suvlarini chiqaradi. Dala soni 50 metr geometrik yaqinlik bo‘yicha hisoblandi."}</p>`;
+  }
+  return `<div class="network-popup"><div class="network-popup-head"><span>${badge}</span><h3>${escapeHtml(title)}</h3><p>${isCanal ? "Sug‘orish kanali" : "Zovur / kollektor"} · ${lengthText} · daraja ${escapeHtml(String(level))}</p></div><p class="network-popup-code">${isCanal ? "Tarmoq kodi" : "Joylashuvi"}: <strong>${escapeHtml(String(location))}</strong></p>${loadingLine}${analysis}<p class="network-popup-foot">Start/end nuqtalari raqamlashtirish yo‘nalishi; tasdiqlangan oqim yo‘nalishi emas.</p></div>`;
 }
 
 async function loadNetworkOverlay(networkType) {
@@ -679,8 +827,21 @@ async function loadNetworkOverlay(networkType) {
       renderer: L.canvas({ padding: .5 }),
       style: { color: config.color, weight: config.weight, opacity: .92 },
       onEachFeature(feature, layer) {
-        layer.bindPopup(networkPopupHtml(networkType, feature.properties || {}));
+        layer._networkBaseStyle = { color: config.color, weight: config.weight, opacity: .92 };
+        layer.bindPopup(networkPopupHtml(networkType, feature.properties || {}, null, null, true), { maxWidth: 390, minWidth: 330 });
         layer.bindTooltip(networkType === "kanal" ? text(feature.properties?.kanal_nomi, "Kanal") : text(feature.properties?.kollektor_, "Zovur"), { sticky: true });
+        layer.on("click", () => {
+          if (selectedNetworkLayer && selectedNetworkLayer !== layer) selectedNetworkLayer.setStyle(selectedNetworkLayer._networkBaseStyle);
+          selectedNetworkLayer = layer;
+          layer.setStyle({ color: "#fff200", weight: Math.max(config.weight + 3, 5), opacity: 1 });
+          layer.setPopupContent(networkPopupHtml(networkType, feature.properties || {}, null, null, true));
+          setTimeout(() => {
+            const routeStats = networkType === "kanal" ? canalRouteStats(feature.properties || {}) : null;
+            const proximityStats = networkType === "zovur" || !routeStats ? networkProximityStats(feature) : null;
+            layer.setPopupContent(networkPopupHtml(networkType, feature.properties || {}, routeStats, proximityStats));
+            layer.openPopup();
+          }, 0);
+        });
       },
     }).addTo(group);
   } catch (error) {
@@ -944,6 +1105,7 @@ function initMapPage() {
       const response = await fetch(DATA_URL);
       if (!response.ok) throw new Error(`GeoJSON yuklanmadi: ${response.status}`);
       fullData = await response.json();
+      buildFieldNetworkIndexes(fullData.features);
       populateCropFilter(fullData.features);
       populateGmrFilter(fullData.features);
       document.querySelector("#map-loading").hidden = true;
