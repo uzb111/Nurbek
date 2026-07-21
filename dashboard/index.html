@@ -6,7 +6,7 @@
     <title>AgroTahlil — Yer va suv tahlili</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2317663b'/%3E%3Cpath d='M16 42C26 39 37 29 45 15c3 19-7 31-23 34M18 47c7-11 14-17 24-23' fill='none' stroke='%23fff' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="./styles.css?v=20260721-concept2" />
+    <link rel="stylesheet" href="./styles.css?v=20260721-concept3" />
   </head>
   <body>
     <div class="app-shell">
@@ -56,7 +56,7 @@
             </article>
 
             <article class="concept-card concept-weather" id="premium-weather">
-              <div class="concept-card-head"><h2>Ob-havo</h2><div class="weather-tabs"><button class="active" type="button">7 kunlik</button><button type="button" disabled>30 kunlik</button></div></div>
+              <div class="concept-card-head"><h2>Ob-havo</h2><div class="weather-tabs"><button class="active" type="button">7 kunlik</button></div></div>
               <div class="forecast-grid" id="premium-forecast"><div class="chart-loading">Open-Meteo yuklanmoqda…</div></div>
               <div class="weather-summary" id="premium-weather-summary"></div>
               <div class="weather-live-source" id="premium-weather-source">Open-Meteo</div>
@@ -74,12 +74,12 @@
               <div class="monthly-et-chart" id="premium-monthly-et"><div class="chart-loading">Real ET yuklanmoqda…</div></div>
               <div class="concept-total" id="premium-et-total">Jami: —</div>
             </article>
-            <article class="concept-card concept-small-card">
+            <article class="concept-card concept-small-card" hidden aria-hidden="true">
               <div class="concept-card-head"><h2>Ma’lumotlar sifati</h2></div>
               <div class="quality-concept-layout"><div class="quality-concept-donut" id="premium-quality-ring"><strong id="premium-quality-score">—</strong><small>hisoblanmoqda</small></div><div class="quality-metric-list" id="premium-quality-list"></div></div>
               <div class="concept-card-foot"><span id="premium-quality-note">5 mezonli yig‘ma baho</span><span>Batafsil →</span></div>
             </article>
-            <article class="concept-card concept-small-card management-card">
+            <article class="concept-card concept-small-card management-card" hidden aria-hidden="true">
               <div class="concept-card-head"><h2>Rahbariyat uchun xulosa</h2></div>
               <div class="management-list" id="premium-management-summary"><div class="chart-loading">Xulosa tayyorlanmoqda…</div></div>
               <div class="concept-card-foot"><span>Formula asosidagi natijalar</span><span>Tavsiya etilgan choralar →</span></div>
@@ -307,6 +307,6 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="./app.js?v=20260721-concept2"></script>
+    <script src="./app.js?v=20260721-concept3"></script>
   </body>
 </html>
