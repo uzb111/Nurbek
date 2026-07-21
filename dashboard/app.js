@@ -723,33 +723,51 @@ function routeStartsWith(candidate, prefix) {
   return prefix.every((value, index) => candidate[index] === value);
 }
 
+function terminalOutlet(properties, route) {
+  const code = String(route[route.length - 1] || properties.water_block_id || "").trim();
+  const suffix = code.match(/(?:^|[-_\s])(\d+)\s*$/);
+  return { code, number: suffix ? suffix[1] : null };
+}
+
 function routeChartSvg(steps) {
-  const width = 900, height = 240, left = 50, right = 58, top = 22, bottom = 40;
+  const width = 900, height = 270, left = 58, right = 74, top = 30, bottom = 48;
   const chartWidth = width - left - right, chartHeight = height - top - bottom;
   const countMaximum = Math.max(...steps.flatMap((step) => [step.polygons, step.blocks]), 1);
-  const waterMaximum = Math.max(...steps.map((step) => step.delivery), 1);
+  const waterMaximum = Math.max(...steps.map((step) => step.selectedWater), 1);
   const x = (index) => left + (steps.length === 1 ? chartWidth / 2 : index * chartWidth / (steps.length - 1));
   const countY = (value) => top + chartHeight - value / countMaximum * chartHeight;
   const waterY = (value) => top + chartHeight - value / waterMaximum * chartHeight;
   const line = (key, scale) => steps.map((step, index) => `${x(index)},${scale(step[key])}`).join(" ");
+  const waterPoints = line("selectedWater", waterY);
+  const waterArea = `${left},${top + chartHeight} ${waterPoints} ${x(steps.length - 1)},${top + chartHeight}`;
   const grids = [0, .25, .5, .75, 1].map((ratio) => {
     const chartY = top + chartHeight * ratio;
-    return `<line x1="${left}" y1="${chartY}" x2="${width - right}" y2="${chartY}" stroke="#dfe9e2" stroke-width="1"/><text x="${left - 8}" y="${chartY + 3}" text-anchor="end" fill="#718076" font-size="9">${fmtInt.format(countMaximum * (1 - ratio))}</text><text x="${width - right + 8}" y="${chartY + 3}" text-anchor="start" fill="#718076" font-size="9">${fmtDec.format(waterMaximum * (1 - ratio) / 1e6)}</text>`;
+    return `<line x1="${left}" y1="${chartY}" x2="${width - right}" y2="${chartY}" stroke="#dfe9e2" stroke-width="1"/><text x="${left - 8}" y="${chartY + 3}" text-anchor="end" fill="#718076" font-size="9">${fmtInt.format(countMaximum * (1 - ratio))}</text><text x="${width - right + 8}" y="${chartY + 3}" text-anchor="start" fill="#0f6fff" font-size="9" font-weight="700">${fmtInt.format(waterMaximum * (1 - ratio))}</text>`;
   }).join("");
-  const dots = (key, color, scale) => steps.map((step, index) => `<circle cx="${x(index)}" cy="${scale(step[key])}" r="4" fill="${color}"><title>${index + 1}-bosqich · ${step.name} · ${key === "delivery" ? `${balanceMillions(step[key])} mln m³` : fmtInt.format(step[key])}</title></circle>`).join("");
-  const xLabels = steps.map((step, index) => `<text x="${x(index)}" y="${height - 17}" text-anchor="middle" fill="#68776d" font-size="9">${index + 1}-quloq</text>`).join("");
-  return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Suv yo‘li bo‘yicha poligonlar, quloqlar va suv hajmi"><text x="${left}" y="12" fill="#718076" font-size="9">Soni</text><text x="${width - right}" y="12" text-anchor="end" fill="#718076" font-size="9">mln m³</text>${grids}<polyline points="${line("polygons", countY)}" fill="none" stroke="#17663b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><polyline points="${line("blocks", countY)}" fill="none" stroke="#d88917" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><polyline points="${line("delivery", waterY)}" fill="none" stroke="#1575bd" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${dots("polygons", "#17663b", countY)}${dots("blocks", "#d88917", countY)}${dots("delivery", "#1575bd", waterY)}${xLabels}</svg>`;
+  const dots = (key, color, scale, label) => steps.map((step, index) => `<circle cx="${x(index)}" cy="${scale(step[key])}" r="4" fill="${color}" stroke="#fff" stroke-width="2"><title>${index + 1}-bosqich · ${escapeHtml(step.name)} · ${label}: ${fmtInt.format(step[key])}${key === "selectedWater" ? " m³" : ""}</title></circle>`).join("");
+  const xLabels = steps.map((step, index) => `<text x="${x(index)}" y="${height - 18}" text-anchor="middle" fill="#52655a" font-size="9" font-weight="650">${index + 1}-bosqich</text>`).join("");
+  const finalStep = steps[steps.length - 1];
+  const finalX = x(steps.length - 1), finalY = waterY(finalStep.selectedWater);
+  const calloutWidth = 164, calloutHeight = 30;
+  const calloutX = Math.max(left, finalX - calloutWidth - 10);
+  const calloutY = finalY < top + 38 ? finalY + 12 : finalY - 38;
+  const finalCallout = `<g><line x1="${finalX}" y1="${finalY}" x2="${finalX - 12}" y2="${calloutY + calloutHeight / 2}" stroke="#0f6fff" stroke-width="2"/><rect x="${calloutX}" y="${calloutY}" width="${calloutWidth}" height="${calloutHeight}" rx="8" fill="#0f6fff"/><text x="${calloutX + calloutWidth / 2}" y="${calloutY + 12}" text-anchor="middle" fill="#dff4ff" font-size="8" font-weight="700">DALA KIRISHI</text><text x="${calloutX + calloutWidth / 2}" y="${calloutY + 24}" text-anchor="middle" fill="#fff" font-size="12" font-weight="800">${fmtInt.format(finalStep.selectedWater)} m³</text></g>`;
+  return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Tanlangan dala suv yo‘li, tarmoqdagi poligonlar va quloqlar"><defs><linearGradient id="routeWaterArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0f6fff" stop-opacity=".28"/><stop offset="100%" stop-color="#00b7ff" stop-opacity=".02"/></linearGradient></defs><text x="${left}" y="16" fill="#17663b" font-size="9" font-weight="700">POLIGON / QULOQ SONI</text><text x="${width - right}" y="16" text-anchor="end" fill="#0f6fff" font-size="9" font-weight="800">TANLANGAN DALA SUVI · m³</text>${grids}<polygon points="${waterArea}" fill="url(#routeWaterArea)"/><polyline class="route-count-line" points="${line("polygons", countY)}" fill="none" stroke="#20a866" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><polyline class="route-count-line" points="${line("blocks", countY)}" fill="none" stroke="#f3a51b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><polyline class="route-water-line" points="${waterPoints}" fill="none" stroke="#0f6fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>${dots("polygons", "#20a866", countY, "poligon")}${dots("blocks", "#f3a51b", countY, "quloq")}${dots("selectedWater", "#0f6fff", waterY, "dala suvi")}${finalCallout}${xLabels}</svg>`;
 }
 
 function renderRouteReport(properties) {
   const route = waterRouteParts(properties);
   const empty = document.querySelector("#route-report-empty");
   const data = document.querySelector("#route-report-data");
-  if (!fullData || !route.length || properties.delivery_calc_status !== "scenario_ready") {
+  const selectedScenario = deliveryScenario(properties);
+  if (!fullData || !route.length || !selectedScenario) {
     empty.hidden = false; data.hidden = true;
     document.querySelector("#route-report-title").textContent = "Suv yo‘li aniqlanmagan";
     return;
   }
+  const outlet = terminalOutlet(properties, route);
+  const routeIntervals = Math.max(route.length - 1, 0);
+  const stageRetention = routeIntervals > 0 ? Math.pow(1 - selectedScenario.lossPct / 100, 1 / routeIntervals) : 1;
   const steps = route.map((name, index) => {
     const prefix = route.slice(0, index + 1);
     const matches = fullData.features.filter((feature) => routeStartsWith(waterRouteParts(feature.properties), prefix));
@@ -757,15 +775,15 @@ function renderRouteReport(properties) {
     const terminalBlocks = new Set(matches.map((feature) => feature.properties.water_block_id).filter(Boolean));
     return {
       name, index: index + 1, polygons: matches.length, fields: uniqueFields.size, blocks: terminalBlocks.size,
-      need: sum(matches, (feature) => feature.properties.seasonal_need_m3),
-      delivery: sum(matches, (feature) => deliveryScenario(feature.properties)?.delivery || feature.properties.delivery_est_m3),
+      selectedWater: selectedScenario.sourceShare * Math.pow(stageRetention, index),
     };
   });
   const selected = steps[steps.length - 1];
+  selected.selectedWater = selectedScenario.delivery;
   empty.hidden = true; data.hidden = false;
-  document.querySelector("#route-report-title").textContent = `${selected.index}-quloq: ${selected.name}`;
-  document.querySelector("#route-report-subtitle").textContent = `${route[0]} dan tanlangan dala qulog‘igacha ${selected.index} bosqichli yo‘l.`;
-  document.querySelector("#route-metrics").innerHTML = `<div><span>Poligonlar soni</span><strong>${fmtInt.format(selected.polygons)}</strong><small>${fmtInt.format(selected.fields)} mantiqiy dala</small></div><div><span>Quloqlar soni</span><strong>${fmtInt.format(selected.blocks)}</strong><small>${selected.index}-bosqich tanlangan</small></div><div><span>Suv hajmi</span><strong>${balanceMillions(selected.delivery)}</strong><small>mln m³ · hisobiy yetib kelish</small></div>`;
+  document.querySelector("#route-report-title").textContent = outlet.number ? `${outlet.number}-quloqda suv oladi` : `Yakuniy quloq: ${outlet.code}`;
+  document.querySelector("#route-report-subtitle").textContent = `${route[0]} → ${outlet.code} · ${selected.index} bosqichli suv yo‘li.`;
+  document.querySelector("#route-metrics").innerHTML = `<div><span>Quloq raqami</span><strong>${outlet.number ? `${escapeHtml(outlet.number)}-quloq` : "Kod bo‘yicha"}</strong><small>${escapeHtml(outlet.code)}</small></div><div><span>Dala kirishidagi suv</span><strong>${fmtInt.format(selectedScenario.delivery)} m³</strong><small>${fmtDec.format(selectedScenario.coverage * 100)}% mavsumiy talab qoplanadi</small></div><div><span>Shu quloq tarmog‘i</span><strong>${fmtInt.format(selected.polygons)} poligon</strong><small>${fmtInt.format(selected.fields)} dala · ${fmtInt.format(selected.blocks)} yakuniy quloq</small></div>`;
   document.querySelector("#route-chart").innerHTML = routeChartSvg(steps);
 }
 
