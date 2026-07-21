@@ -8,6 +8,7 @@ __pycache__/
 Smart_agriculture.gdb/
 mvp_data_partial_*/
 real_project_data/
+_incoming_gdb_inspect_*/
 mvp_data/Smart_agriculture_mvp.gdb/
 mvp_data/geojson/*
 mvp_data/*.json

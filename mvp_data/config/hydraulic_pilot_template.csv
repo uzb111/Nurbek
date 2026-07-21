@@ -1,0 +1,2 @@
+field_id,confirmed_intake_node_id,confirmed_source_node_id,flow_direction_verified,upstream_service_rank,field_demand_m3,source_available_m3,loss_percent_per_km,offtake_loss_percent,notes
+# Bu fayl faqat etalon 10-20 dala uchun to'ldiriladi. node_id va nomzod edge_id real_project_data/hydraulic_topology.gdb dagi qatlamlarda ko'rinadi.,,,,,,,,,
