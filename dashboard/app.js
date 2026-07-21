@@ -364,7 +364,7 @@ function renderDistrictBalance(data) {
   document.querySelector("#balance-excluded").textContent = `${fmtInt.format(data.field_totals.unassigned_polygons_excluded)} poligon (${fmtDec.format(data.field_totals.unassigned_area_ha_excluded)} ga) tuman kodi bo‘sh bo‘lgani uchun ushbu hisobga kiritilmadi.`;
   setBalanceInputs();
   if (geoLayer) geoLayer.setStyle(styleFor);
-  if (!document.querySelector("#water-balance-view").hidden) document.querySelector("#data-status").textContent = `${data.district.name} · ${data.period.days} kun`;
+  if (!document.querySelector("#dashboard-view").hidden) document.querySelector("#data-status").textContent = `${data.district.name} · ${data.period.days} kun`;
 }
 
 async function loadDistrictBalance() {
@@ -1097,7 +1097,12 @@ function cancelSplit(hidePanel = true) {
 
 function renderConclusions() {
   const container = document.querySelector("#conclusion-grid");
-  if (!dashboardSummary) { container.innerHTML = "<p>Statistika yuklanmoqda…</p>"; return; }
+  const executiveContainer = document.querySelector("#executive-conclusions");
+  if (!dashboardSummary) {
+    container.innerHTML = "<p>Statistika yuklanmoqda…</p>";
+    executiveContainer.innerHTML = "<p>Asosiy signallar hisoblanmoqda…</p>";
+    return;
+  }
   const s = dashboardSummary;
   const t = s.totals;
   const weather = currentWeather ? weatherStats(currentWeather) : null;
@@ -1138,23 +1143,25 @@ function renderConclusions() {
     { title: "Taxminiy qisqa muddatli talab", text: weather ? `Ekin Kc va GMR bo‘yicha sizot hissasi taxmini qo‘shilganda 7 kunlik talab ${fmtDec.format(theoreticalWater / 1e6)} mln m³.` : "Ob-havo kelgach hisoblanadi.", formula: `suv = max(ET0×Kc ${fmtDec.format(weightedKc)} − yog‘in − sizot ${fmtDec.format(weightedGroundwaterFactor * 100)}%, 0) × ga × 10`, tone: "warning" },
   ];
   container.innerHTML = conclusions.map((item, index) => `<article class="conclusion-item ${item.tone || ""}"><span class="conclusion-number">XULOSA ${String(index + 1).padStart(2, "0")}</span><h3>${item.title}</h3><p>${item.text}</p><code>${item.formula}</code></article>`).join("");
+  const executiveIndexes = [2, 4, 17, 18];
+  executiveContainer.innerHTML = executiveIndexes.map((index) => {
+    const item = conclusions[index];
+    return `<article class="executive-item ${item.tone || ""}"><span>${String(index + 1).padStart(2, "0")}</span><div><h3>${item.title}</h3><p>${item.text}</p></div></article>`;
+  }).join("");
 }
 
 function showView(view) {
-  const dashboard = view === "dashboard";
-  const waterBalance = view === "water-balance";
-  const mapView = view === "map";
+  const normalizedView = view === "map" ? "map" : "dashboard";
+  const dashboard = normalizedView === "dashboard";
+  const mapView = normalizedView === "map";
   document.querySelector("#dashboard-view").hidden = !dashboard;
-  document.querySelector("#water-balance-view").hidden = !waterBalance;
   document.querySelector("#map-view").hidden = !mapView;
-  document.querySelectorAll(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.view === view));
-  document.querySelector("#page-title").textContent = dashboard ? "Umumiy tahlil dashboardi" : waterBalance ? "Tuman suv balansi" : "Dalalar xaritasi va dala pasporti";
-  document.querySelector("#page-subtitle").textContent = dashboard ? "Hudud, ekinlar, suv talabi, ob-havo va avtomatik xulosalar" : waterBalance ? "Limit, berilgan suv, ishlatilgan suv va evapotranspiratsiya" : "Poligonni tanlang va dala hisobini batafsil ko‘ring";
+  document.querySelectorAll(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.view === normalizedView));
+  document.querySelector("#page-title").textContent = dashboard ? "Umumiy tahlil" : "Dalalar xaritasi va dala pasporti";
+  document.querySelector("#page-subtitle").textContent = dashboard ? "Suv balansi, ekinlar, real ET, ob-havo va rahbariyat xulosasi" : "Dalani toping, ekin kiriting va suv yo‘lini line chartda kuzating";
   document.querySelector("#reset-view").hidden = !mapView;
   if (dashboard) {
     if (dashboardSummary) document.querySelector("#data-status").textContent = `${fmtInt.format(dashboardSummary.totals.polygons)} poligon · tahlil tayyor`;
-  } else if (waterBalance) {
-    document.querySelector("#data-status").textContent = districtBalance ? `${districtBalance.district.name} · ${districtBalance.period.days} kun` : "Suv balansi yuklanmoqda…";
   } else if (mapView) {
     initMapPage();
     setTimeout(() => map?.invalidateSize(), 50);
@@ -1412,6 +1419,34 @@ function renderMapView(features) {
   document.querySelector("#data-status").textContent = `${fmtInt.format(fullData.features.length)} yagona dala · xaritada ${fmtInt.format(visible.length)}${etStatus}`;
 }
 
+function findFieldFromToolbar() {
+  const input = document.querySelector("#quick-field-search");
+  const query = input.value.trim().toLowerCase();
+  if (!query || !fullData || !geoLayer) {
+    document.querySelector("#map-hint").textContent = query ? "Dala ma’lumoti hali yuklanmagan." : "Qidirish uchun field_id kiriting.";
+    return;
+  }
+  const idOf = (item) => String(item.properties.field_id || item.properties.feature_id || "");
+  const feature = fullData.features.find((item) => idOf(item).toLowerCase() === query)
+    || fullData.features.find((item) => idOf(item).toLowerCase().includes(query));
+  if (!feature) {
+    document.querySelector("#map-hint").textContent = `“${query}” bo‘yicha dala topilmadi.`;
+    return;
+  }
+  let layer = null;
+  geoLayer.eachLayer((candidate) => {
+    if (idOf(candidate.feature || { properties: {} }) === idOf(feature)) layer = candidate;
+  });
+  if (!layer) {
+    document.querySelector("#map-hint").textContent = "Dala bazada bor, ammo xarita optimizatsiyasi sabab joriy qatlamga kirmagan.";
+    return;
+  }
+  map.fitBounds(layer.getBounds().pad(.45), { maxZoom: 15 });
+  selectField(feature, layer);
+  layer.openPopup();
+  document.querySelector("#map-hint").textContent = `Dala ${idOf(feature).slice(0, 12)} topildi.`;
+}
+
 function waterRouteParts(properties) {
   return String(properties.water_route || "").split("→").map((item) => item.trim()).filter(Boolean);
 }
@@ -1656,9 +1691,13 @@ document.querySelector("#cancel-split").addEventListener("click", () => cancelSp
 document.querySelector("#export-split").addEventListener("click", exportSplitGeoJSON);
 document.querySelector("#manual-crop-select").addEventListener("change", assignCropToSelectedField);
 document.querySelector("#recommend-crops").addEventListener("click", applyCropRecommendations);
+document.querySelector("#quick-field-find").addEventListener("click", findFieldFromToolbar);
+document.querySelector("#quick-field-search").addEventListener("keydown", (event) => {
+  if (event.key === "Enter") findFieldFromToolbar();
+});
 loadManualCropAssignments();
 const initialView = new URLSearchParams(window.location.search).get("view");
-if (initialView === "map" || initialView === "water-balance") showView(initialView);
+if (initialView === "map") showView(initialView);
 loadSummary();
 loadWeather();
 loadOfficialPeriodWeather();

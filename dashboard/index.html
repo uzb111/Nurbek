@@ -6,15 +6,14 @@
     <title>AgroTahlil — Yer va suv tahlili</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2317663b'/%3E%3Cpath d='M16 42C26 39 37 29 45 15c3 19-7 31-23 34M18 47c7-11 14-17 24-23' fill='none' stroke='%23fff' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="./styles.css?v=20260721-recommend6" />
+    <link rel="stylesheet" href="./styles.css?v=20260721-premium1" />
   </head>
   <body>
     <div class="app-shell">
       <aside class="sidebar" aria-label="Asosiy menyu">
         <div class="brand"><span class="brand-mark">A</span><span>Agro<span>Tahlil</span></span></div>
         <nav class="nav-list">
-          <button class="nav-item active" data-view="dashboard"><span>▦</span> Umumiy dashboard</button>
-          <button class="nav-item" data-view="water-balance"><span>≈</span> Tuman suv balansi</button>
+          <button class="nav-item active" data-view="dashboard"><span>▦</span> Umumiy tahlil</button>
           <button class="nav-item" data-view="map"><span>◇</span> Dalalar xaritasi</button>
         </nav>
         <div class="sidebar-note">
@@ -27,8 +26,8 @@
         <header class="topbar">
           <div>
             <p class="eyebrow">SMART AGRICULTURE / QASHQADARYO</p>
-            <h1 id="page-title">Umumiy tahlil dashboardi</h1>
-            <p class="page-subtitle" id="page-subtitle">Hudud, ekinlar, suv talabi, ob-havo va avtomatik xulosalar</p>
+            <h1 id="page-title">Umumiy tahlil</h1>
+            <p class="page-subtitle" id="page-subtitle">Suv balansi, ekinlar, real ET, ob-havo va rahbariyat xulosasi</p>
           </div>
           <div class="topbar-actions">
             <span class="data-badge" id="data-status">Ma’lumot yuklanmoqda…</span>
@@ -37,14 +36,14 @@
         </header>
 
         <section class="view-panel" id="dashboard-view">
-          <section class="kpi-grid" aria-label="Asosiy ko‘rsatkichlar">
+          <section class="kpi-grid overview-kpis" aria-label="Asosiy ko‘rsatkichlar">
             <article class="kpi-card"><div class="kpi-icon green">▦</div><div><span class="kpi-label">Tahlil qamrovi</span><strong id="kpi-features">—</strong><small id="kpi-fields">— dala</small></div></article>
             <article class="kpi-card"><div class="kpi-icon earth">◫</div><div><span class="kpi-label">Umumiy maydon</span><strong id="kpi-area">—</strong><small>gektar</small></div></article>
             <article class="kpi-card"><div class="kpi-icon blue">◒</div><div><span class="kpi-label">Mavsumiy suv rejasi</span><strong id="kpi-water">—</strong><small id="kpi-norm">— m³/ga o‘rtacha</small></div></article>
             <article class="kpi-card"><div class="kpi-icon amber">!</div><div><span class="kpi-label">Tasdiqlash talab etiladi</span><strong id="kpi-review">—</strong><small>taxminiy hisoblangan poligon</small></div></article>
           </section>
 
-          <section class="analytics-grid">
+          <section class="analytics-grid overview-primary">
             <article class="card chart-card chart-wide">
               <div class="card-heading"><div><span class="eyebrow">SUV TALABI</span><h2>Ekinlar kesimida</h2></div><span class="chart-unit">mln m³</span></div>
               <div class="bar-list" id="crop-bars"></div>
@@ -59,7 +58,7 @@
             </article>
           </section>
 
-          <section class="weather-card card" id="weather">
+          <section class="weather-card card overview-weather" id="weather">
             <div class="weather-heading">
               <div><span class="eyebrow">JONLI OB-HAVO / OPEN-METEO</span><h2>Hududiy ob-havo konteksti</h2><p>Qashqadaryo dala qamrovining markaziy nuqtasi: 38.86724, 65.41781</p></div>
               <span class="weather-source" id="weather-source">Ma’lumot yuklanmoqda…</span>
@@ -75,7 +74,7 @@
             <p class="weather-disclaimer">Ob-havo Open-Meteo API’dan olinadi. Suv normasi, ekin koeffitsiyenti va sizot suvi ta’siri hisoblangan yoki taxminiy qiymat sifatida alohida ko‘rsatiladi.</p>
           </section>
 
-          <section class="analytics-grid lower-grid">
+          <section class="analytics-grid lower-grid overview-secondary">
             <article class="card chart-card">
               <div class="card-heading"><div><span class="eyebrow">GMR TUZILMASI</span><h2>Guruhlar bo‘yicha suv</h2></div></div>
               <div class="simple-bars" id="gmr-bars"></div>
@@ -86,13 +85,17 @@
             </article>
           </section>
 
-          <section class="card conclusions-card">
-            <div class="card-heading conclusions-heading"><div><span class="eyebrow">AVTOMATIK TAHLIL</span><h2>Formula asosidagi 20 ta asosiy xulosa</h2><p>Har bir xulosada ishlatilgan hisob yoki tekshiruv qoidasi ko‘rsatilgan.</p></div><span class="conclusion-count">20 xulosa</span></div>
-            <div class="conclusion-grid" id="conclusion-grid"></div>
+          <section class="card executive-summary">
+            <div class="card-heading"><div><span class="eyebrow">RAHBARIYAT UCHUN XULOSA</span><h2>Bugungi asosiy signallar</h2><p>Eng muhim natijalar bir qarashda; batafsil metodika pastda ochiladi.</p></div><span class="conclusion-count">4 signal</span></div>
+            <div class="executive-grid" id="executive-conclusions"></div>
           </section>
-        </section>
 
-        <section class="view-panel" id="water-balance-view" hidden>
+          <details class="card conclusions-card">
+            <summary class="conclusions-summary"><span><span class="eyebrow">BATAFSIL AVTOMATIK TAHLIL</span><strong>Formula asosidagi 20 ta xulosa</strong><small>Har bir natijaning hisobi va tekshiruv qoidasi</small></span><span class="conclusion-count">20 xulosani ochish</span></summary>
+            <div class="conclusion-grid" id="conclusion-grid"></div>
+          </details>
+
+        <section class="dashboard-water-section" id="water-balance-view">
           <section class="balance-hero card">
             <div>
               <span class="eyebrow">TUMAN MIQYOSIDAGI SUV HISOBI</span>
@@ -102,7 +105,9 @@
             <div class="balance-badges"><span id="balance-et-badge">ET ma’lumoti yuklanmoqda…</span><span id="balance-limit-status" class="estimated">Limit yuklanmoqda…</span></div>
           </section>
 
-          <section class="balance-input-card card">
+          <details class="balance-settings card">
+            <summary><span><span class="eyebrow">SSENARIY SOZLAMALARI</span><strong>Limit va amaldagi suv qiymatlarini o‘zgartirish</strong></span><span>Sozlamalarni ochish</span></summary>
+          <section class="balance-input-card">
             <div class="card-heading"><div><span class="eyebrow">KIRISH QIYMATLARI</span><h2>Limit va amaldagi suvni kiriting</h2><p>Rasmiy limit avtomatik yuklanadi; berilgan va ishlatilgan suv o‘lchov ma’lumoti kelganda almashtiriladi.</p></div></div>
             <div class="balance-inputs">
               <label><span>Umumiy suv limiti</span><input id="input-water-limit" type="number" min="0" step="0.1" /><small id="limit-input-source">mln m³ · rasmiy ma’lumot yuklanmoqda</small></label>
@@ -111,6 +116,7 @@
               <button id="balance-reset" class="balance-reset" type="button">Boshlang‘ich qiymatni tiklash</button>
             </div>
           </section>
+          </details>
 
           <section class="card official-limit-card" id="official-limit-card" hidden>
             <div class="card-heading"><div><span class="eyebrow">RASMIY SUV LIMITI</span><h2 id="official-limit-title">—</h2><p id="official-limit-note">—</p></div><strong class="official-total" id="official-limit-total">—</strong></div>
@@ -159,6 +165,7 @@
             </article>
           </section>
         </section>
+        </section>
 
         <section class="view-panel" id="map-view" hidden>
           <section class="workspace">
@@ -169,10 +176,10 @@
                 <div class="legend" id="map-legend"><span><i class="legend-dot" style="background:#809087"></i> Ekin kiritilmagan</span></div>
               </div>
               <div class="map-toolbar">
-                <div class="crop-assign-intro"><span class="eyebrow">QO‘LDA EKIN KIRITISH</span><strong id="manual-crop-selected-field">Avval xaritadan dalani tanlang</strong><small>Ekinni tanlashingiz bilan formula darhol yangilanadi. Tavsiya faqat joriy sessiya uchun hisoblanadi.</small></div>
-                <button class="toolbar-split-button" id="toolbar-start-split" type="button" disabled><span>1</span> Dalani split qilish<small>2 nuqta bilan kesish</small></button>
+                <div class="field-search-control"><label for="quick-field-search">Dala qidirish</label><div><input id="quick-field-search" type="search" placeholder="field_id kiriting" autocomplete="off" /><button id="quick-field-find" type="button" title="Dalani topish">⌕</button></div><small id="manual-crop-selected-field">Avval xaritadan dalani tanlang</small></div>
                 <label class="crop-assign-select"><span>Ekin</span><select id="manual-crop-select" aria-label="Tanlangan dala ekini" disabled><option value="">Bo‘sh — ekin kiritilmagan</option><option value="cotton">Paxta</option><option value="alfalfa">Beda</option><option value="maize">Makkajo‘xori</option><option value="vegetables">Sabzavot</option><option value="melons">Poliz</option><option value="winter_grain">Bug‘doy</option></select></label>
                 <button class="recommend-button" id="recommend-crops" type="button" disabled><span>✦</span> Tavsiya<small>Ma’lumotlar yuklanmoqda</small></button>
+                <button class="toolbar-split-button" id="toolbar-start-split" type="button" disabled><span>1</span> Dalani split qilish<small>2 nuqta bilan kesish</small></button>
               </div>
               <div class="map-wrap"><div id="map"></div><div class="map-loading" id="map-loading"><div class="spinner"></div><p>Dala geometriyasi yuklanmoqda…</p></div><div class="map-hint" id="map-hint">Poligon ustiga bosing — dala pasporti ochiladi</div></div>
               </div>
@@ -243,6 +250,6 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="./app.js?v=20260721-auditfix10"></script>
+    <script src="./app.js?v=20260721-premium1"></script>
   </body>
 </html>
