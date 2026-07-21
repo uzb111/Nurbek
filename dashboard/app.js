@@ -27,14 +27,15 @@ const WATER_STATUS_META = {
   shortage: { label: "Suv tanqis", color: "#ff7a00", className: "shortage" },
   severe: { label: "Jiddiy tanqis", color: "#e53935", className: "severe" },
 };
-const CROP_COEFFICIENT = { cotton: 1.15, winter_grain: 1.05, alfalfa: 1.10, maize: 1.15, vegetables: 1.05, melons: 0.95, orchard: 0.95 };
+const CROP_COEFFICIENT = { cotton: 1.15, winter_grain: 1.05, alfalfa: 1.10, maize: 1.15, vegetables: 1.05, melons: 0.95 };
 const GROUNDWATER_FACTOR = { I: 0.16, II: 0.14, III: 0.12, IV: 0.10, V: 0.08, VI: 0.06, IX: 0.04 };
 const CROP_LABELS = { cotton: "Paxta", winter_grain: "Bug‘doy", alfalfa: "Beda", maize: "Makkajo‘xori", orchard: "Bog‘", melons: "Poliz", vegetables: "Sabzavot" };
-const PNG_CROP_ORDER = ["cotton", "alfalfa", "maize", "vegetables", "melons", "orchard", "winter_grain"];
+const PNG_CROP_ORDER = ["cotton", "alfalfa", "maize", "vegetables", "melons", "winter_grain"];
+const CROP_COLORS = { cotton: "#00c96b", alfalfa: "#7c4dff", maize: "#ffd000", vegetables: "#ff3d71", melons: "#ff8a00", winter_grain: "#00a3ff" };
 const CROP_PROFILES = {
   cotton: { minBonitet: 55, textures: [3, 4, 5], heat: 92 }, winter_grain: { minBonitet: 40, textures: [2, 3, 4, 5], heat: 84 },
   alfalfa: { minBonitet: 50, textures: [3, 4, 5], heat: 76 }, maize: { minBonitet: 55, textures: [3, 4, 5], heat: 80 },
-  orchard: { minBonitet: 60, textures: [3, 4, 5], heat: 72 }, melons: { minBonitet: 45, textures: [2, 3, 4], heat: 92 },
+  melons: { minBonitet: 45, textures: [2, 3, 4], heat: 92 },
   vegetables: { minBonitet: 65, textures: [3, 4], heat: 62 },
 };
 
@@ -390,6 +391,7 @@ function assignCropToSelectedField() {
     properties.crop_group_mvp = cropGroup || null;
     applySplitCropRule(selectedFeature);
     renderSplitLayer();
+    renderCropLegend();
     const replacementLayer = splitLayerForField(properties.field_id);
     if (replacementLayer) selectField(selectedFeature, replacementLayer);
     return;
@@ -399,6 +401,7 @@ function assignCropToSelectedField() {
   applyManualCrop(properties, cropGroup);
   if (selectedLayer) selectedLayer.bindPopup(popupHtml(properties));
   if (geoLayer) geoLayer.setStyle(styleFor);
+  renderCropLegend();
   selectField(selectedFeature, selectedLayer);
 }
 
@@ -561,13 +564,14 @@ function applyCropRecommendations() {
     feature.properties.crop_mvp_confidence = recommendation.score;
   });
   geoLayer?.setStyle(styleFor);
+  renderCropLegend();
   if (splitState.parts.length) renderSplitLayer();
   if (selectedFeature) {
     const replacement = selectedFeature.properties.split_status === "scenario" ? splitLayerForField(selectedFeature.properties.field_id) : selectedLayer;
     if (replacement) selectField(selectedFeature, replacement);
   }
   const summary = PNG_CROP_ORDER.map((group) => `${CROP_LABELS[group]} ${fmtInt.format(counts.get(group) || 0)}`).join(" · ");
-  document.querySelector("#map-hint").textContent = `Tavsiya tayyor: ${fmtInt.format(assignments.size)} dala, 7/7 ekin joylashtirildi. ${summary}.`;
+  document.querySelector("#map-hint").textContent = `Tavsiya tayyor: ${fmtInt.format(assignments.size)} dala, 6/6 ekin joylashtirildi. ${summary}.`;
 }
 
 function renderFieldDecision(properties) {
@@ -753,16 +757,16 @@ function splitLayerForField(fieldId) {
 
 function restoreSplitPartStyle(layer) {
   const feature = layer.feature;
-  const water = feature.properties.crop_group_mvp ? fieldWaterAnalysis(feature.properties) : null;
-  layer.setStyle({ color: feature.properties.split_part === "A" ? "#00e5ff" : "#ff4fd8", weight: 4, opacity: 1, fillColor: water ? WATER_STATUS_META[water.key].color : MAP_STATUS_COLORS.crop_required, fillOpacity: .82, dashArray: null });
+  const cropGroup = feature.properties.crop_group_mvp;
+  layer.setStyle({ color: feature.properties.split_part === "A" ? "#00e5ff" : "#ff4fd8", weight: 4, opacity: 1, fillColor: CROP_COLORS[cropGroup] || MAP_STATUS_COLORS.crop_required, fillOpacity: cropGroup ? .86 : .65, dashArray: null });
 }
 
 function renderSplitLayer() {
   if (splitState.layer) map.removeLayer(splitState.layer);
   splitState.layer = L.geoJSON(turf.featureCollection(splitState.parts), {
     style(feature) {
-      const water = feature.properties.crop_group_mvp ? fieldWaterAnalysis(feature.properties) : null;
-      return { color: feature.properties.split_part === "A" ? "#00e5ff" : "#ff4fd8", weight: 4, opacity: 1, fillColor: water ? WATER_STATUS_META[water.key].color : MAP_STATUS_COLORS.crop_required, fillOpacity: .82 };
+      const cropGroup = feature.properties.crop_group_mvp;
+      return { color: feature.properties.split_part === "A" ? "#00e5ff" : "#ff4fd8", weight: 4, opacity: 1, fillColor: CROP_COLORS[cropGroup] || MAP_STATUS_COLORS.crop_required, fillOpacity: cropGroup ? .86 : .65 };
     },
     onEachFeature(feature, layer) { layer.bindTooltip(`Qism ${feature.properties.split_part} · ${fmtDec.format(feature.properties.maydoni)} ga · ${CROP_LABELS[feature.properties.crop_group_mvp] || "Ekin kiritilmagan"}`, { sticky: true }); },
   }).addTo(map);
@@ -898,12 +902,14 @@ function showView(view) {
   }
 }
 
+function renderCropLegend() {
+  document.querySelector("#map-legend").innerHTML = `${PNG_CROP_ORDER.map((group) => `<span><i class="legend-dot" style="background:${CROP_COLORS[group]}"></i>${CROP_LABELS[group]}</span>`).join("")}<span><i class="legend-dot" style="background:${MAP_STATUS_COLORS.crop_required}"></i>Ekin kiritilmagan</span>`;
+}
+
 function styleFor(feature) {
-  const meta = getMeta(feature.properties.demo_norm_status);
-  const fillColor = !feature.properties.crop_group_mvp ? MAP_STATUS_COLORS.crop_required
-    : districtBalance ? WATER_STATUS_META[fieldWaterAnalysis(feature.properties).key].color
-      : MAP_STATUS_COLORS[feature.properties.demo_norm_status] || meta.color;
-  return { color: "#ffffff", weight: 1.45, opacity: 1, fillColor, fillOpacity: feature.properties.demo_norm_status === "demo_ready_observed" ? .76 : .72 };
+  const cropGroup = feature.properties.crop_group_mvp;
+  const fillColor = CROP_COLORS[cropGroup] || MAP_STATUS_COLORS.crop_required;
+  return { color: "#ffffff", weight: 1.55, opacity: 1, fillColor, fillOpacity: cropGroup ? .82 : .62 };
 }
 
 function popupHtml(properties) {

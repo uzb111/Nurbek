@@ -1,6 +1,6 @@
 # Ekin tavsiyasi va joylashtirish metodikasi
 
-Tizim faqat quyidagi 7 ekindan foydalanadi: Paxta, Beda, Makkajo‘xori, Sabzavot, Poliz, Bog‘ va Bug‘doy.
+Tizim faqat quyidagi 6 ekindan foydalanadi: Paxta, Beda, Makkajo‘xori, Sabzavot, Poliz va Bug‘doy. Bog‘ tavsiya va qo‘lda ekin tanlash ro‘yxatidan chiqarilgan.
 
 ## Dala moslik skori
 
@@ -16,8 +16,8 @@ Suv normasi dala ichidagi barcha GMR/tuproq qismlari uchun PNG qoidalari bo‘yi
 Har bir dalaga faqat individual eng yuqori ball berilsa suv tejamkor ekinlar haddan tashqari ko‘payib ketadi. Shu sabab barcha dalalar birgalikda joylashtiriladi:
 
 1. Har dala–ekin juftligi uchun moslik skori hisoblanadi.
-2. Tuman suv balansi faylidagi 7 ekin maydoni ulushlari maqsadli taqsimot sifatida olinadi.
+2. Tuman suv balansi faylidagi 6 ekin maydoni ulushlari maqsadli taqsimot sifatida olinadi.
 3. Eng yuqori moslikdagi dala–ekin juftliklari maqsadli maydon chegarasigacha joylashtiriladi.
 4. Qolgan dalalar moslik skori va ekinning maqsadli maydoni to‘lish darajasi bilan muvozanatlashtiriladi.
 
-Natijada 7 ekinning barchasi dalalarga joylashtiriladi. Tavsiya va qo‘lda tanlangan ekinlar sahifa yangilanganda saqlanmaydi.
+Natijada 6 ekinning barchasi dalalarga joylashtiriladi va xaritada alohida rang bilan ko‘rsatiladi. Tavsiya va qo‘lda tanlangan ekinlar sahifa yangilanganda saqlanmaydi.
