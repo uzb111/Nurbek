@@ -74,6 +74,7 @@ const networkSpatialCache = new Map();
 
 const fmtInt = new Intl.NumberFormat("uz-UZ", { maximumFractionDigits: 0 });
 const fmtDec = new Intl.NumberFormat("uz-UZ", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const fmtPrecise = new Intl.NumberFormat("uz-UZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const number = (value) => Number(value) || 0;
 const sum = (items, selector) => items.reduce((total, item) => total + number(selector(item)), 0);
 const text = (value, fallback = "—") => value === undefined || value === null || value === "" ? fallback : value;
@@ -184,7 +185,7 @@ function renderPremiumCropDistribution(summary) {
     return `${colors[index]} ${start}% ${cursor}%`;
   }).join(",");
   document.querySelector("#premium-crop-distribution").innerHTML = `<div class="crop-concept-donut" style="background:radial-gradient(circle closest-side,#fff 63%,transparent 65%),conic-gradient(${stops})"><div><strong>${fmtInt.format(totalArea)}</strong><small>ga</small></div></div><div class="crop-concept-list">${visible.map((item, index) => `<div><span><i style="background:${colors[index]}"></i>${escapeHtml(item.label)}</span><small>${fmtInt.format(item.area_ha)} ga</small><strong>${fmtDec.format(percent(item.area_ha, totalArea))}%</strong></div>`).join("")}</div>`;
-  document.querySelector("#premium-crop-count").textContent = `Ekin turlari soni: ${fmtInt.format(summary.crops.length)}`;
+  document.querySelector("#premium-crop-count").textContent = `${fmtInt.format(summary.crops.length)} ekin turi · ${fmtInt.format(totalArea)} ga`;
 }
 
 function renderPremiumMonthlyEt() {
@@ -195,7 +196,7 @@ function renderPremiumMonthlyEt() {
   const maximum = Math.max(...rows.map((item) => item.value), 1);
   document.querySelector("#premium-monthly-et").innerHTML = rows.map((item) => `<div class="monthly-et-column"><strong>${fmtDec.format(item.value)}</strong><div><i style="height:${item.value / maximum * 100}%"></i></div><span>${item.label}</span></div>`).join("");
   document.querySelector("#premium-et-total").textContent = `Jami (aprel–sentabr): ${balanceMillions(actualEtMetadata.official_period_et_m3)} mln m³`;
-  document.querySelector("#premium-real-et").textContent = balanceMillions(actualEtMetadata.official_period_et_m3);
+  document.querySelector("#premium-real-et").textContent = premiumMillions(actualEtMetadata.official_period_et_m3);
   document.querySelector("#premium-et-note").textContent = `${fmtInt.format(actualEtMetadata.matched_fields)} dala · ≥${fmtInt.format(actualEtMetadata.match_threshold_pct || 70)}% fazoviy moslik`;
 }
 
@@ -272,8 +273,8 @@ function renderPremiumManagement(limit, actualEt, deficit) {
 }
 
 function renderPremiumWaterBalance({ limit, supplied, used, actualEt, rain, groundwater, distributionLoss, deficit }) {
-  document.querySelector("#premium-limit").textContent = balanceMillions(limit);
-  document.querySelector("#premium-real-et").textContent = balanceMillions(actualEt);
+  document.querySelector("#premium-limit").textContent = premiumMillions(limit);
+  document.querySelector("#premium-real-et").textContent = premiumMillions(actualEt);
   const svg = premiumWaterChartSvg(limit, actualEt, rain, groundwater, distributionLoss);
   document.querySelector("#premium-water-chart").innerHTML = `${svg || '<div class="chart-loading">Oylik real ET yuklanmoqda…</div>'}<div class="water-chart-summary"><div><i class="limit-dot"></i><span>Rasmiy suv limiti</span><strong>${balanceMillions(limit)} mln m³</strong></div><div><i class="et-dot"></i><span>ET (Real)</span><strong>${balanceMillions(actualEt)} mln m³</strong></div><div><i class="rain-dot"></i><span>Yog‘ingarchilik</span><strong>${balanceMillions(rain)} mln m³</strong></div><div><i class="ground-dot"></i><span>Sizot suvlari oqimi</span><strong>${balanceMillions(groundwater)} mln m³</strong></div><div><i class="loss-dot"></i><span>Boshqa yo‘qotishlar</span><strong>${balanceMillions(distributionLoss)} mln m³</strong></div></div>`;
   renderPremiumManagement(limit, actualEt, deficit);
@@ -382,13 +383,14 @@ function renderDashboard(summary) {
   document.querySelector("#water-composition").innerHTML = `<div class="composition-track"><div class="composition-observed" style="width:${observedWaterShare}%"></div><div class="composition-estimated" style="width:${100 - observedWaterShare}%"></div></div><div class="composition-legend"><div><span>Manba asosidagi suv</span><strong>${fmtDec.format(t.observed_water_m3 / 1e6)} mln m³</strong><small>${fmtDec.format(observedWaterShare)}% jami hajmdan</small></div><div><span>Taxminiy suv</span><strong>${fmtDec.format(t.estimated_water_m3 / 1e6)} mln m³</strong><small>${fmtDec.format(100 - observedWaterShare)}% jami hajmdan</small></div></div>`;
   document.querySelector("#data-status").textContent = `${fmtInt.format(t.polygons)} poligon · tahlil tayyor`;
   document.querySelector("#premium-area").textContent = fmtInt.format(t.area_ha);
-  document.querySelector("#premium-fields").textContent = `${fmtInt.format(t.fields)} faol dala`;
+  document.querySelector("#premium-fields").textContent = `GDB · ${fmtInt.format(t.fields)} DALA`;
   renderPremiumCropDistribution(summary);
   renderPremiumQuality();
   renderConclusions();
 }
 
 function balanceMillions(value) { return fmtDec.format(number(value) / 1e6); }
+function premiumMillions(value) { return fmtPrecise.format(number(value) / 1e6); }
 
 function setBalanceInputs() {
   if (!districtBalance) return;
@@ -423,7 +425,7 @@ function renderOfficialLimit(data) {
   document.querySelector("#balance-limit-status").textContent = "Rasmiy limit · 2025";
   document.querySelector("#balance-limit-status").classList.remove("estimated");
   document.querySelector("#limit-input-source").textContent = `mln m³ · rasmiy jami ${balanceMillions(total)}; oylar ${balanceMillions(monthTotal)}`;
-  document.querySelector("#premium-limit").textContent = balanceMillions(total);
+  document.querySelector("#premium-limit").textContent = premiumMillions(total);
   document.querySelector("#premium-period").textContent = "2025-yil, 1-aprel — 30-sentabr";
   updateBalancePeriodLabel();
   if (districtBalance) setBalanceInputs();
