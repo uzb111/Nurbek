@@ -172,7 +172,7 @@
                 <div class="crop-assign-intro"><span class="eyebrow">QO‘LDA EKIN KIRITISH</span><strong id="manual-crop-selected-field">Avval xaritadan dalani tanlang</strong><small>Ekinni tanlashingiz bilan formula darhol yangilanadi. Tavsiya faqat joriy sessiya uchun hisoblanadi.</small></div>
                 <button class="toolbar-split-button" id="toolbar-start-split" type="button" disabled><span>1</span> Dalani split qilish<small>2 nuqta bilan kesish</small></button>
                 <label class="crop-assign-select"><span>Ekin</span><select id="manual-crop-select" aria-label="Tanlangan dala ekini" disabled><option value="">Bo‘sh — ekin kiritilmagan</option><option value="cotton">Paxta</option><option value="alfalfa">Beda</option><option value="maize">Makkajo‘xori</option><option value="vegetables">Sabzavot</option><option value="melons">Poliz</option><option value="orchard">Bog‘</option><option value="winter_grain">Bug‘doy</option></select></label>
-                <button class="recommend-button" id="recommend-crops" type="button"><span>✦</span> Tavsiya<small>Barcha dalaga hisoblash</small></button>
+                <button class="recommend-button" id="recommend-crops" type="button" disabled><span>✦</span> Tavsiya<small>Ma’lumotlar yuklanmoqda</small></button>
               </div>
               <div class="map-wrap"><div id="map"></div><div class="map-loading" id="map-loading"><div class="spinner"></div><p>Dala geometriyasi yuklanmoqda…</p></div><div class="map-hint" id="map-hint">Poligon ustiga bosing — dala pasporti ochiladi</div></div>
               </div>
@@ -206,7 +206,7 @@
                   <code class="formula-line" id="field-delivery-formula">—</code>
                   <p class="delivery-note" id="field-delivery-note">—</p>
                 </section>
-                <section class="field-analysis"><span class="eyebrow">7 KUNLIK TAHLILIY BAHO</span><div class="field-analysis-value"><strong id="field-seven-day-water">—</strong><span>m³</span></div><code class="formula-line" id="field-weather-formula">—</code><p id="field-conclusion">—</p></section>
+                <section class="field-analysis"><span class="eyebrow" id="field-et-heading">REAL ET — MART–OKTABR</span><div class="field-analysis-value"><strong id="field-seven-day-water">—</strong><span>m³</span></div><code class="formula-line" id="field-weather-formula">—</code><p id="field-conclusion">—</p></section>
                 <section class="field-water-status">
                   <div class="section-label-row"><span class="eyebrow">DALA SUV HOLATI</span><span class="water-state" id="field-water-state">—</span></div>
                   <div class="water-coverage"><strong id="field-water-coverage">—</strong><span>hisobiy ta’minlanganlik</span></div>
@@ -222,7 +222,7 @@
                   <span class="eyebrow">EKIN TAVSIYASI</span>
                   <h3>Ushbu dala uchun mos variantlar</h3>
                   <div class="recommendation-list" id="field-crop-recommendations"><p>Hisoblanmoqda…</p></div>
-                  <code class="formula-line">Moslik = 45% suv + 30% bonitet + 15% mexanik tarkib + 10% ob-havo</code>
+                  <code class="formula-line">Moslik = 45% suv (limit + yo‘l + real ET) + 30% bonitet + 15% mexanik tarkib + 10% ob-havo</code>
                   <p class="recommendation-warning">Bu dastlabki agrotexnik saralash. Yakuniy ekin tanlovi sho‘rlanish, laboratoriya tahlili, bozor va agronom xulosasi bilan tasdiqlanadi.</p>
                 </section>
                 <section class="data-note"><span class="note-icon">i</span><p id="field-note">—</p></section>
@@ -243,6 +243,6 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="./app.js?v=20260721-recommend6"></script>
+    <script src="./app.js?v=20260721-actualet7"></script>
   </body>
 </html>
