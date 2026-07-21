@@ -1,5 +1,5 @@
 const SUMMARY_URL = "../mvp_data/dashboard_summary.json";
-const DATA_URL = "../mvp_data/geojson/fields_delivery_2025.geojson";
+const DATA_URL = "../mvp_data/geojson/fields_delivery_2025_lite.geojson";
 const WEATHER_SNAPSHOT_URL = "../mvp_data/open_meteo_weather.json";
 const WEATHER_API_URL = "/api/open-meteo";
 const DISTRICT_BALANCE_URL = "../mvp_data/district_water_balance.json";
