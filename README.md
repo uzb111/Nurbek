@@ -21,6 +21,12 @@ dashboard hamda ma’lumotlarni tayyorlash skriptlari.
   oqim limitlari va yo‘qotishlarini hisoblash poydevori.
 - `TAHLIL_FORMULALARI.md` — suv balansi, dala holati, ekin tavsiyasi va split
   ssenariysi formulalari.
+- `FORMULA_ALGORITHM_AUDIT.md` — 2026-07-21 auditidan keyingi amaldagi formula,
+  algoritm, ma’lumot maqomi va cheklovlarning yagona texnik tavsifi.
+- `audit_project.mjs` — ID, maydon, route-loss, real ET va davr mosligini
+  avtomatik tekshiradi.
+- `build_field_components.mjs` — splitdan keyin tuproq/GMRni fazoviy qayta
+  hisoblash uchun ixcham komponent qatlamini yaratadi.
 - `mvp_data/config/` — ekin guruhlari va sug‘orish normativlari konfiguratsiyasi.
 
 ## Lokal ishga tushirish

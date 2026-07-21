@@ -1,5 +1,7 @@
 # AgroTahlil: xulosa va formulalar
 
+> 2026-07-21 auditidan keyingi amaldagi batafsil metodika `FORMULA_ALGORITHM_AUDIT.md` faylida. Quyidagi ayrim umumiy dashboard xulosalari tarixiy/proksi qatlamni tavsiflaydi.
+
 ## Ma’lumot maqomi
 
 - **Real API ma’lumoti:** Open-Meteo harorat, yog‘in, ET0, shamol va tuproq
@@ -75,7 +77,9 @@ Tuman ekrani bir xil davr bo‘yicha quyidagi miqdorlarni solishtiradi:
 
 Asosiy tenglama:
 
-`ET_actual = min(ETc_potential, Used_irrigation + Effective_rain + Groundwater)`
+Real ET mavjud bo‘lsa tuman balansida rasmiy limit bilan bir xil aprel–sentabr oylari olinadi:
+
+`ET_actual = Σ(ET_month_mm × field_area_ha × 10)`
 
 `Deficit = max(ETc_potential − Used_irrigation − Effective_rain − Groundwater, 0)`
 
@@ -111,7 +115,7 @@ Har bir zona va GMR uchun PNG normativ jadvalidagi barcha ekinlar solishtiriladi
 
 `Suitability = 0.45×Water + 0.30×Bonitet + 0.15×Texture + 0.10×Climate`
 
-`Water` — tuman foydali suvi / ekin normasi; `Bonitet` — ekin uchun minimal
+`Water` — 70% tuman foydali suvi / ekin normasi va 30% tuman foydali suvi / real ET talabi; `Bonitet` — ekin uchun minimal
 bonitetga nisbatan baho; `Texture` — Tm1 mexanik tarkib sinfi; `Climate` —
 Open-Meteo issiqlik stressi va ekinning issiqqa mosligi.
 
@@ -131,9 +135,10 @@ Qismlarning tahliliy maydoni manbadagi dala maydoniga mutanosib saqlanadi:
 
 `Part_area = Parent_area × Geometric_part_area / ΣGeometric_part_area`
 
-Shuning uchun `A_area + B_area = Parent_area`. Har bir qism uchun ekin, zona,
-GMR, bonitet va Tm1 mustaqil tanlanadi. Ekinlar PNG jadvalidagi tartibda:
-paxta, beda, makkajo‘xori, sabzavot, poliz, bog‘ va bug‘doy.
+Shuning uchun `A_area + B_area = Parent_area`. Asl tuproq/GMR fragmentlari A va B
+geometriyasi bilan fazoviy kesiladi; zona, GMR, bonitet, Tm1 va dominant suv yo‘li
+har qism uchun avtomatik qayta olinadi. Foydalanuvchi faqat ekinni tanlaydi.
+Ekinlar: paxta, beda, makkajo‘xori, sabzavot, poliz va bug‘doy.
 
 Suv normasi faqat `zona + GMR + ekin` kombinatsiyasi PNGdan aniq topilganda
 qo‘llanadi:

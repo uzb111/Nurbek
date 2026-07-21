@@ -99,7 +99,7 @@
               <h2 id="balance-district">Kasbi tumani</h2>
               <p id="balance-period">Davr yuklanmoqda…</p>
             </div>
-            <div class="balance-badges"><span>Open-Meteo ET</span><span id="balance-limit-status" class="estimated">Limit yuklanmoqda…</span></div>
+            <div class="balance-badges"><span id="balance-et-badge">ET ma’lumoti yuklanmoqda…</span><span id="balance-limit-status" class="estimated">Limit yuklanmoqda…</span></div>
           </section>
 
           <section class="balance-input-card card">
@@ -121,7 +121,7 @@
             <article class="kpi-card"><div class="kpi-icon blue">L</div><div><span class="kpi-label">Umumiy limit</span><strong id="balance-limit">—</strong><small>mln m³</small></div></article>
             <article class="kpi-card"><div class="kpi-icon earth">B</div><div><span class="kpi-label">Amalda berilgan</span><strong id="balance-supplied">—</strong><small id="balance-supply-share">—</small></div></article>
             <article class="kpi-card"><div class="kpi-icon green">I</div><div><span class="kpi-label">Dalalarda ishlatilgan</span><strong id="balance-used">—</strong><small id="balance-use-share">—</small></div></article>
-            <article class="kpi-card"><div class="kpi-icon amber">ET</div><div><span class="kpi-label">ET bo‘yicha sarflangan</span><strong id="balance-actual-et">—</strong><small>ekin va tuproq evapotranspiratsiyasi</small></div></article>
+            <article class="kpi-card"><div class="kpi-icon amber">ET</div><div><span class="kpi-label">ET bo‘yicha sarflangan</span><strong id="balance-actual-et">—</strong><small id="balance-et-source">ma’lumot yuklanmoqda…</small></div></article>
           </section>
 
           <section class="balance-grid">
@@ -142,7 +142,7 @@
 
           <section class="balance-grid balance-lower">
             <article class="card balance-chart-card">
-              <div class="card-heading"><div><span class="eyebrow">EKINLAR ET HISOBI</span><h2>Bug‘lanish va transpiratsiya</h2></div></div>
+              <div class="card-heading"><div><span class="eyebrow">REAL ET OYLAR KESIMIDA</span><h2>Aprel–sentabr evapotranspiratsiya</h2></div></div>
               <div class="simple-bars" id="balance-crop-et"></div>
             </article>
             <article class="card balance-formula-card">
@@ -150,8 +150,8 @@
               <h2 id="balance-conclusion">—</h2>
               <div class="balance-equation" id="balance-equation">—</div>
               <ul>
-                <li>ET0 va yog‘in — Open-Meteo tarixiy ma’lumoti.</li>
-                <li>Kc — ekin va oy bo‘yicha taxminiy koeffitsiyent.</li>
+                <li>Real ET — dala poligonlari bilan fazoviy moslashtirilgan oylik qiymat.</li>
+                <li>Yog‘in — rasmiy limit davriga teng Open-Meteo tarixiy ma’lumoti.</li>
                 <li>Sizot hissasi — GMR guruhi bo‘yicha taxmin.</li>
                 <li>Limit, berilgan va ishlatilgan suv rasmiy ma’lumot bilan almashtiriladi.</li>
               </ul>
@@ -243,6 +243,6 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="./app.js?v=20260721-cropcolors9"></script>
+    <script src="./app.js?v=20260721-auditfix10"></script>
   </body>
 </html>

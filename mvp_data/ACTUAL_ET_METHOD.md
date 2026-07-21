@@ -25,3 +25,5 @@ Natija: 10 710 daladan 10 563 tasi real ET bilan bog‘landi; 10 515 dalada qamr
 `Dala real ET hajmi (m³) = maydon-vaznli jami ET (mm) × dala maydoni (ga) × 10`
 
 Split qism uchun shu real ET millimetr qiymati qismning yangi maydoniga qo‘llanadi. ET geometriyasi va bog‘lash natijasi `integrate_actual_et.py` orqali qayta yaratiladi.
+
+Tuman suv balansida rasmiy 2025 limit davriga mos bo‘lishi uchun faqat aprel–sentabr oylari yig‘iladi. Hozirgi moslangan dalalar bo‘yicha bu hajm 301,157 mln m³. Shu davr samarali yog‘ini 2025-04-01—2025-09-30 Open-Meteo tarixiy qatoridan olinadi.

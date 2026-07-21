@@ -2,10 +2,14 @@ const SUMMARY_URL = "../mvp_data/dashboard_summary.json";
 const DATA_URL = "../mvp_data/geojson/fields_merged_manual.geojson";
 const WEATHER_SNAPSHOT_URL = "../mvp_data/open_meteo_weather.json";
 const WEATHER_API_URL = "/api/open-meteo";
+const WEATHER_DIRECT_URL = "https://api.open-meteo.com/v1/forecast?latitude=38.86724&longitude=65.41781&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,weather_code,soil_moisture_3_to_9cm&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,et0_fao_evapotranspiration&timezone=Asia%2FTashkent&forecast_days=7";
+const OFFICIAL_PERIOD_WEATHER_URL = "https://archive-api.open-meteo.com/v1/archive?latitude=38.86724&longitude=65.41781&start_date=2025-04-01&end_date=2025-09-30&daily=precipitation_sum,et0_fao_evapotranspiration&timezone=Asia%2FTashkent";
+const OFFICIAL_PERIOD_WEATHER_SNAPSHOT_URL = "../mvp_data/open_meteo_official_period_2025.json";
 const DISTRICT_BALANCE_URL = "../mvp_data/district_water_balance.json";
 const OFFICIAL_LIMIT_URL = "../mvp_data/official_water_limit_2025.json";
 const IRRIGATION_RULES_URL = "../mvp_data/config/irrigation_norms.csv";
 const ACTUAL_ET_URL = "../mvp_data/actual_et_by_field.json";
+const FIELD_COMPONENTS_URL = "../mvp_data/geojson/field_components.geojson";
 const NETWORK_SOURCES = {
   kanal: { url: "../mvp_data/geojson/kanal.geojson", label: "Kanallar — 1 615", color: "#16b8e8", weight: 2.8 },
   zovur: { url: "../mvp_data/geojson/zovur.geojson", label: "Zovurlar — 64", color: "#b88248", weight: 3.2 },
@@ -41,6 +45,8 @@ const CROP_PROFILES = {
 
 let dashboardSummary = null;
 let currentWeather = null;
+let weatherLoadComplete = false;
+let officialPeriodWeather = null;
 let districtBalance = null;
 let officialLimit = null;
 let irrigationRules = [];
@@ -57,6 +63,9 @@ let fieldGeometryIndex = [];
 let selectedNetworkLayer = null;
 let manualCropAssignments = {};
 let actualEtMetadata = null;
+let fieldComponentPromise = null;
+let fieldComponentIndex = new Map();
+let districtNeedCache = null;
 const networkLoadState = new Set();
 const networkSpatialCache = new Map();
 
@@ -89,6 +98,34 @@ function applyActualEtData(features, payload) {
       actual_et_source: match.source,
     });
   });
+  if (actualEtMetadata) {
+    const officialPeriodMonths = ["4", "5", "6", "7", "8", "9"];
+    const matched = features.filter((feature) => feature.properties.actual_et_status === "matched");
+    actualEtMetadata.official_period_months = officialPeriodMonths;
+    actualEtMetadata.official_period_monthly_m3 = Object.fromEntries(officialPeriodMonths.map((month) => [month, sum(matched, (feature) => {
+      const properties = feature.properties;
+      return number(properties.actual_et_monthly_mm?.[month]) * number(properties.maydoni) * 10;
+    })]));
+    actualEtMetadata.official_period_et_m3 = sum(matched, (feature) => {
+      const properties = feature.properties;
+      const monthlyMm = sum(officialPeriodMonths, (month) => properties.actual_et_monthly_mm?.[month]);
+      return monthlyMm * number(properties.maydoni) * 10;
+    });
+    actualEtMetadata.official_period_groundwater_m3 = sum(matched, (feature) => {
+      const properties = feature.properties;
+      const monthlyMm = sum(officialPeriodMonths, (month) => properties.actual_et_monthly_mm?.[month]);
+      const components = properties.soil_gmr_components || [];
+      const componentArea = sum(components, (component) => component.area_ha);
+      const groundwaterFactor = componentArea
+        ? sum(components, (component) => number(component.area_ha) * (GROUNDWATER_FACTOR[component.gmr] ?? .08)) / componentArea
+        : (GROUNDWATER_FACTOR[properties.gmr_mvp] ?? .08);
+      return monthlyMm * number(properties.maydoni) * 10 * groundwaterFactor;
+    });
+    actualEtMetadata.matched_area_ha = sum(matched, (feature) => feature.properties.maydoni);
+    actualEtMetadata.unmatched_fields = features.length - matched.length;
+    actualEtMetadata.unmatched_area_ha = sum(features.filter((feature) => feature.properties.actual_et_status !== "matched"), (feature) => feature.properties.maydoni);
+  }
+  if (districtBalance) updateWaterBalance();
 }
 
 function weatherStats(payload) {
@@ -96,10 +133,11 @@ function weatherStats(payload) {
   const current = payload?.current || {};
   const rain = sum(daily.precipitation_sum || [], Number);
   const et0 = sum(daily.et0_fao_evapotranspiration || [], Number);
+  const maximums = (daily.temperature_2m_max || []).map(number).filter(Number.isFinite);
   return {
     rain, et0, deficit: Math.max(et0 - rain, 0),
     temperature: number(current.temperature_2m),
-    maxTemperature: Math.max(...(daily.temperature_2m_max || [number(current.temperature_2m)]).map(number)),
+    maxTemperature: maximums.length ? Math.max(...maximums) : number(current.temperature_2m),
     soil: number(current.soil_moisture_3_to_9cm), wind: number(current.wind_speed_10m), time: current.time,
   };
 }
@@ -110,6 +148,7 @@ function weatherValue(value, unit, digits = 1) {
 
 function renderWeather(payload, sourceLabel, fallback = false) {
   currentWeather = payload;
+  weatherLoadComplete = true;
   const stats = weatherStats(payload);
   document.querySelector("#weather-temp").textContent = weatherValue(stats.temperature, "°C");
   document.querySelector("#weather-rain").textContent = weatherValue(stats.rain, "mm");
@@ -122,26 +161,53 @@ function renderWeather(payload, sourceLabel, fallback = false) {
   source.textContent = sourceLabel;
   source.classList.toggle("offline", fallback);
   renderConclusions();
+  updateRecommendationControl();
   if (selectedFeature) { renderFieldDecision(selectedFeature.properties); renderRouteReport(selectedFeature.properties); }
 }
 
 async function loadWeather() {
-  try {
-    const response = await fetch(WEATHER_API_URL, { cache: "no-store" });
-    if (!response.ok) throw new Error(`Open-Meteo: ${response.status}`);
-    renderWeather(await response.json(), "Open-Meteo · jonli API");
-  } catch (liveError) {
+  const liveSources = [
+    { url: WEATHER_API_URL, label: "Open-Meteo · jonli API" },
+    { url: WEATHER_DIRECT_URL, label: "Open-Meteo · jonli API (to‘g‘ridan-to‘g‘ri)" },
+  ];
+  for (const source of liveSources) {
     try {
-      const response = await fetch(WEATHER_SNAPSHOT_URL, { cache: "no-store" });
-      if (!response.ok) throw liveError;
-      const snapshot = await response.json();
-      renderWeather(snapshot.weather || snapshot, "Open-Meteo · saqlangan nusxa", true);
-    } catch (snapshotError) {
-      const source = document.querySelector("#weather-source");
-      source.textContent = "Open-Meteo ulanmagan";
-      source.classList.add("offline");
-      renderConclusions();
-      console.warn("Weather unavailable", snapshotError);
+      const response = await fetch(source.url, { cache: "no-store" });
+      if (!response.ok) throw new Error(`Open-Meteo: ${response.status}`);
+      renderWeather(await response.json(), source.label);
+      return;
+    } catch (error) {
+      console.warn(`Weather source unavailable: ${source.url}`, error);
+    }
+  }
+  try {
+    const response = await fetch(WEATHER_SNAPSHOT_URL, { cache: "no-store" });
+    if (!response.ok) throw new Error(`Saqlangan ob-havo: ${response.status}`);
+    const snapshot = await response.json();
+    renderWeather(snapshot.weather || snapshot, "Open-Meteo · saqlangan nusxa", true);
+  } catch (snapshotError) {
+    const source = document.querySelector("#weather-source");
+    source.textContent = "Open-Meteo ulanmagan";
+    source.classList.add("offline");
+    weatherLoadComplete = true;
+    renderConclusions();
+    updateRecommendationControl();
+    console.warn("Weather unavailable", snapshotError);
+  }
+}
+
+async function loadOfficialPeriodWeather() {
+  const sources = [OFFICIAL_PERIOD_WEATHER_URL, OFFICIAL_PERIOD_WEATHER_SNAPSHOT_URL];
+  for (const url of sources) {
+    try {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) throw new Error(`Open-Meteo tarixiy davr: ${response.status}`);
+      const payload = await response.json();
+      officialPeriodWeather = payload.weather || payload;
+      if (districtBalance) updateWaterBalance();
+      return;
+    } catch (error) {
+      console.warn(`Official-period weather unavailable: ${url}`, error);
     }
   }
 }
@@ -189,10 +255,20 @@ function setBalanceInputs() {
   if (!districtBalance) return;
   const defaults = districtBalance.editable_defaults;
   const limit = officialLimit?.total_limit_m3 ?? defaults.limit_m3;
+  const supplied = officialLimit ? limit * .88 : defaults.supplied_m3;
+  const used = officialLimit ? supplied * .82 : defaults.used_m3;
   document.querySelector("#input-water-limit").value = (limit / 1e6).toFixed(2);
-  document.querySelector("#input-water-supplied").value = (defaults.supplied_m3 / 1e6).toFixed(1);
-  document.querySelector("#input-water-used").value = (defaults.used_m3 / 1e6).toFixed(1);
+  document.querySelector("#input-water-supplied").value = (supplied / 1e6).toFixed(2);
+  document.querySelector("#input-water-used").value = (used / 1e6).toFixed(2);
   updateWaterBalance();
+}
+
+function updateBalancePeriodLabel() {
+  if (officialLimit) {
+    document.querySelector("#balance-period").textContent = `${officialLimit.period.start} — ${officialLimit.period.end} · rasmiy limit va real ET bir xil aprel–sentabr oylari`;
+  } else if (districtBalance) {
+    document.querySelector("#balance-period").textContent = `${districtBalance.period.start_date} — ${districtBalance.period.end_date} · ${fmtInt.format(districtBalance.period.days)} kun · ${fmtInt.format(districtBalance.field_totals.area_ha)} ga`;
+  }
 }
 
 function renderOfficialLimit(data) {
@@ -208,6 +284,7 @@ function renderOfficialLimit(data) {
   document.querySelector("#balance-limit-status").textContent = "Rasmiy limit · 2025";
   document.querySelector("#balance-limit-status").classList.remove("estimated");
   document.querySelector("#limit-input-source").textContent = `mln m³ · rasmiy jami ${balanceMillions(total)}; oylar ${balanceMillions(monthTotal)}`;
+  updateBalancePeriodLabel();
   if (districtBalance) setBalanceInputs();
 }
 
@@ -227,12 +304,20 @@ function updateWaterBalance() {
   const limit = number(document.querySelector("#input-water-limit").value) * 1e6;
   const supplied = number(document.querySelector("#input-water-supplied").value) * 1e6;
   const used = number(document.querySelector("#input-water-used").value) * 1e6;
+  const realEt = number(actualEtMetadata?.official_period_et_m3);
   const potentialEt = districtBalance.evapotranspiration.potential_etc_m3;
-  const rain = districtBalance.weather.effective_rain_m3;
-  const groundwater = districtBalance.evapotranspiration.groundwater_contribution_m3;
+  const etDemand = realEt || potentialEt;
+  const periodRainMm = officialPeriodWeather ? sum(officialPeriodWeather.daily?.precipitation_sum || [], Number) : 0;
+  const periodAligned = Boolean(realEt && periodRainMm && actualEtMetadata?.matched_area_ha);
+  const rain = periodAligned
+    ? periodRainMm * .8 * number(actualEtMetadata.matched_area_ha) * 10
+    : districtBalance.weather.effective_rain_m3;
+  const groundwater = periodAligned
+    ? number(actualEtMetadata.official_period_groundwater_m3)
+    : districtBalance.evapotranspiration.groundwater_contribution_m3;
   const availableForEt = used + rain + groundwater;
-  const actualEt = Math.min(potentialEt, availableForEt);
-  const deficit = Math.max(potentialEt - availableForEt, 0);
+  const actualEt = realEt || Math.min(potentialEt, availableForEt);
+  const deficit = Math.max(etDemand - availableForEt, 0);
   const distributionLoss = Math.max(supplied - used, 0);
   const unusedLimit = Math.max(limit - supplied, 0);
 
@@ -253,8 +338,18 @@ function updateWaterBalance() {
     ["Dalalarda ishlatilgan", used, "used"], ["ET bo‘yicha sarflangan", actualEt, "et"],
   ];
   document.querySelector("#balance-flow").innerHTML = rows.map(([label, value, className]) => `<div class="flow-row"><span>${label}</span><div class="flow-track"><div class="flow-fill ${className}" style="width:${value / maximum * 100}%"></div></div><strong>${balanceMillions(value)}</strong></div>`).join("");
-  document.querySelector("#balance-conclusion").textContent = deficit > 0 ? `ET talabi bo‘yicha ${balanceMillions(deficit)} mln m³ suv defitsiti mavjud` : `Mavjud suv manbalari hisobiy ET talabini qoplaydi`;
-  document.querySelector("#balance-equation").textContent = `ET sarfi = min(ETc ${balanceMillions(potentialEt)}, ishlatilgan ${balanceMillions(used)} + samarali yog‘in ${balanceMillions(rain)} + sizot ${balanceMillions(groundwater)}) = ${balanceMillions(actualEt)} mln m³. Ishlatilmagan limit: ${balanceMillions(unusedLimit)} mln m³.`;
+  document.querySelector("#balance-et-source").textContent = realEt ? `real ET · aprel–sentabr · ${fmtInt.format(actualEtMetadata.matched_fields)} dala` : "ekin va tuproq evapotranspiratsiyasi";
+  document.querySelector("#balance-et-badge").textContent = realEt ? `Real ET · fazoviy moslashtirilgan${periodAligned ? " · davrlar teng" : ""}` : "Open-Meteo ET modeli";
+  document.querySelector("#balance-conclusion").textContent = deficit > 0 ? `ET talabi bo‘yicha ${balanceMillions(deficit)} mln m³ suv defitsiti mavjud` : `Mavjud suv manbalari ET talabini qoplaydi`;
+  document.querySelector("#balance-equation").textContent = realEt
+    ? `Real ET (aprel–sentabr) = Σ(oylik ET mm × dala ga × 10) = ${balanceMillions(realEt)} mln m³. Mavjud manba: ishlatilgan ${balanceMillions(used)} + samarali yog‘in ${balanceMillions(rain)} + sizot ${balanceMillions(groundwater)} mln m³${periodAligned ? "; yog‘in ham 2025-yil aprel–sentabr Open-Meteo davridan" : ""}. Ishlatilmagan limit: ${balanceMillions(unusedLimit)} mln m³.`
+    : `ET sarfi = min(ETc ${balanceMillions(potentialEt)}, ishlatilgan ${balanceMillions(used)} + samarali yog‘in ${balanceMillions(rain)} + sizot ${balanceMillions(groundwater)}) = ${balanceMillions(actualEt)} mln m³. Ishlatilmagan limit: ${balanceMillions(unusedLimit)} mln m³.`;
+  if (realEt) {
+    const monthLabels = { 4: "Aprel", 5: "May", 6: "Iyun", 7: "Iyul", 8: "Avgust", 9: "Sentabr" };
+    const monthRows = Object.entries(actualEtMetadata.official_period_monthly_m3 || {}).map(([month, value]) => ({ label: monthLabels[month] || month, water_m3: value }));
+    document.querySelector("#balance-crop-et").innerHTML = barRows(monthRows, realEt, 6);
+    document.querySelector("#balance-excluded").textContent = `${fmtInt.format(actualEtMetadata.unmatched_fields)} dala (${fmtDec.format(actualEtMetadata.unmatched_area_ha)} ga) real ET bilan 70% chegarada moslashmagan; real ET jami bu maydonlarni o‘z ichiga olmaydi.`;
+  }
   if (geoLayer) geoLayer.setStyle(styleFor);
   if (selectedFeature) { renderFieldDecision(selectedFeature.properties); renderRouteReport(selectedFeature.properties); }
 }
@@ -262,7 +357,7 @@ function updateWaterBalance() {
 function renderDistrictBalance(data) {
   districtBalance = data;
   document.querySelector("#balance-district").textContent = `${data.district.name} · kod ${data.district.code}`;
-  document.querySelector("#balance-period").textContent = `${data.period.start_date} — ${data.period.end_date} · ${fmtInt.format(data.period.days)} kun · ${fmtInt.format(data.field_totals.area_ha)} ga`;
+  updateBalancePeriodLabel();
   const cropLabels = { cotton: "Paxta", winter_grain: "Bug‘doy", alfalfa: "Beda", maize: "Makkajo‘xori", orchard: "Bog‘", melons: "Poliz", vegetables: "Sabzavot" };
   const maximum = Math.max(...data.crop_groups.map((group) => group.etc_m3), 1);
   document.querySelector("#balance-crop-et").innerHTML = data.crop_groups.map((group) => `<div class="bar-row"><span>${cropLabels[group.group] || group.group}</span><div class="bar-track"><div class="bar-fill" style="width:${group.etc_m3 / maximum * 100}%"></div></div><span class="bar-value">${balanceMillions(group.etc_m3)}</span></div>`).join("");
@@ -321,6 +416,7 @@ function nearestComponentRule(component, cropGroup) {
 }
 
 function clearFieldCrop(properties) {
+  districtNeedCache = null;
   Object.assign(properties, {
     crop_group_mvp: null, crop_mvp: null, crop_mvp_source: "manual_required",
     crop_mvp_confidence: null, norm_m3ha_mvp: null, planned_water_m3_mvp: null,
@@ -351,11 +447,13 @@ function applyManualCrop(properties, cropGroup) {
   const patterns = [...new Set(calculated.map((component) => component.irrigation_pattern).filter(Boolean))];
   const starts = calculated.map((component) => component.start).filter(Boolean).sort();
   const ends = calculated.map((component) => component.end).filter(Boolean).sort();
+  districtNeedCache = null;
   Object.assign(properties, {
     crop_group_mvp: cropGroup, crop_mvp: CROP_LABELS[cropGroup], crop_mvp_source: "manual_user",
     crop_mvp_confidence: 100, crop_norm_components: calculated,
     norm_m3ha_mvp: number(properties.maydoni) ? totalNeed / number(properties.maydoni) : null,
     planned_water_m3_mvp: totalNeed, seasonal_need_m3: totalNeed,
+    allocation_reference_need_m3: totalNeed,
     irrigation_count_mvp: patterns.join(" / ") || null,
     irrigation_start_mvp: starts[0] || null, irrigation_end_mvp: ends[ends.length - 1] || null,
     norm_source: [...new Set(calculated.map((component) => component.source).filter(Boolean))].join("; "),
@@ -411,16 +509,40 @@ function currentDistrictUsedM3() {
   return input || districtBalance.editable_defaults.used_m3;
 }
 
+function currentDistrictNeed() {
+  if (districtNeedCache) return districtNeedCache;
+  const fallback = number(fullData?.features?.find((feature) => number(feature.properties.district_need_m3))?.properties?.district_need_m3)
+    || number(districtBalance?.field_totals?.planned_water_m3);
+  if (!fullData?.features?.length) return { value: fallback, mode: "static", assigned: 0, eligible: 0 };
+  const splitParentId = splitState.parts.length ? splitState.parent?.properties?.field_id : null;
+  const allocationFeatures = fullData.features.filter((feature) => feature.properties.water_route && feature.properties.field_id !== splitParentId);
+  if (splitState.parts.length) allocationFeatures.push(...splitState.parts.filter((feature) => feature.properties.water_route));
+  let complete = true, assigned = 0;
+  const dynamicTotal = sum(allocationFeatures, (feature) => {
+    const properties = feature.properties;
+    const current = number(properties.seasonal_need_m3);
+    const reference = number(properties.allocation_reference_need_m3);
+    if (current) assigned += 1;
+    if (!current && !reference) complete = false;
+    return current || reference;
+  });
+  districtNeedCache = complete && dynamicTotal > 0
+    ? { value: dynamicTotal, mode: "dynamic", assigned, eligible: allocationFeatures.length }
+    : { value: fallback, mode: "static", assigned, eligible: allocationFeatures.length };
+  return districtNeedCache;
+}
+
 function deliveryScenario(properties) {
   if (properties.delivery_calc_status !== "scenario_ready") return null;
   const activeLimit = number(document.querySelector("#input-water-limit")?.value) * 1e6 || number(properties.official_limit_m3);
   const need = number(properties.seasonal_need_m3);
-  const districtNeed = number(properties.district_need_m3);
+  const denominator = currentDistrictNeed();
+  const districtNeed = denominator.value;
   const lossPct = number(properties.route_loss_pct_scn);
   if (!activeLimit || !need || !districtNeed) return null;
   const sourceShare = activeLimit * need / districtNeed;
   const delivery = sourceShare * (1 - lossPct / 100);
-  return { activeLimit, sourceShare, lossPct, lossM3: sourceShare - delivery, delivery, coverage: delivery / need, need };
+  return { activeLimit, sourceShare, lossPct, lossM3: sourceShare - delivery, delivery, coverage: delivery / need, need, districtNeed, denominatorMode: denominator.mode };
 }
 
 function fieldWaterAnalysis(properties) {
@@ -470,7 +592,7 @@ function rulesForField(properties) {
 }
 
 function cropRecommendations(properties) {
-  return cropCandidatesForField(properties).slice(0, 3).map((item) => ({
+  return (cropCandidatesForField(properties) || []).slice(0, 3).map((item) => ({
     ...item, name: CROP_LABELS[item.group] || item.group,
     minBonitet: (CROP_PROFILES[item.group] || { minBonitet: 50 }).minBonitet,
   }));
@@ -499,7 +621,10 @@ function cropCandidatesForField(properties) {
     const soilScore = sum(calculated, (item) => number(item.component.area_ha) * soilSuitability(number(item.component.bonitet) || number(properties.bonitet), profile.minBonitet)) / area;
     const mechanicalScore = sum(calculated, (item) => number(item.component.area_ha) * textureScore(number(item.component.tm1) || number(properties.Tm1), profile.textures)) / area;
     const officialWaterScore = Math.min(100, percent(availableM3Ha, norm));
-    const actualEtScore = properties.actual_et_status === "matched" ? Math.min(100, percent(number(properties.actual_et_total_mm), norm / 10)) : officialWaterScore;
+    const actualEtDemandM3Ha = number(properties.actual_et_total_mm) * 10;
+    const actualEtScore = properties.actual_et_status === "matched" && actualEtDemandM3Ha
+      ? Math.min(100, percent(availableM3Ha, actualEtDemandM3Ha))
+      : officialWaterScore;
     const waterScore = officialWaterScore * .70 + actualEtScore * .30;
     const climateScore = hot ? profile.heat : 85;
     return { group, score: Math.round(waterScore * .45 + soilScore * .30 + mechanicalScore * .15 + climateScore * .10), norm, waterScore };
@@ -507,15 +632,15 @@ function cropCandidatesForField(properties) {
 }
 
 function recommendedCropForField(properties) {
-  return cropCandidatesForField(properties)[0] || null;
+  return (cropCandidatesForField(properties) || [])[0] || null;
 }
 
 function updateRecommendationControl() {
   const button = document.querySelector("#recommend-crops");
   if (!button) return;
-  const ready = Boolean(fullData && districtBalance && irrigationRules.length);
+  const ready = Boolean(fullData && districtBalance && irrigationRules.length && weatherLoadComplete);
   button.disabled = !ready;
-  button.querySelector("small").textContent = ready ? "Barcha dalaga hisoblash" : "Ma’lumotlar yuklanmoqda";
+  button.querySelector("small").textContent = ready ? "Barcha dalaga hisoblash" : "Dala, suv va ob-havo yuklanmoqda";
 }
 
 function applyCropRecommendations() {
@@ -527,9 +652,18 @@ function applyCropRecommendations() {
   const sourceCropArea = sum(districtBalance.crop_groups.filter((item) => PNG_CROP_ORDER.includes(item.group)), (item) => item.area_ha);
   const targetAreas = new Map(districtBalance.crop_groups.filter((item) => PNG_CROP_ORDER.includes(item.group)).map((item) => [item.group, dashboardArea * number(item.area_ha) / sourceCropArea]));
   const assignedAreas = new Map(PNG_CROP_ORDER.map((group) => [group, 0]));
-  const plans = fullData.features.map((feature) => ({ feature, area: number(feature.properties.maydoni), candidates: cropCandidatesForField(feature.properties) })).filter((plan) => plan.candidates.length);
+  const plans = fullData.features.map((feature) => ({ feature, area: number(feature.properties.maydoni), candidates: cropCandidatesForField(feature.properties) || [] })).filter((plan) => plan.candidates.length);
   const pairs = plans.flatMap((plan) => plan.candidates.map((candidate) => ({ plan, candidate }))).sort((first, second) => second.candidate.score - first.candidate.score);
   const assignments = new Map();
+  [...PNG_CROP_ORDER].sort((first, second) => (targetAreas.get(first) || 0) - (targetAreas.get(second) || 0)).forEach((group) => {
+    const target = targetAreas.get(group) || 0;
+    const options = plans.map((plan) => ({ plan, candidate: plan.candidates.find((item) => item.group === group) })).filter((item) => item.candidate && !assignments.has(item.plan.feature));
+    const withinTarget = options.filter((item) => item.plan.area <= target * 1.015);
+    const selected = (withinTarget.length ? withinTarget : options).sort((first, second) => second.candidate.score - first.candidate.score || first.plan.area - second.plan.area)[0];
+    if (!selected) return;
+    assignments.set(selected.plan.feature, selected.candidate);
+    assignedAreas.set(group, selected.plan.area);
+  });
   pairs.forEach(({ plan, candidate }) => {
     if (assignments.has(plan.feature)) return;
     const target = targetAreas.get(candidate.group) || 0;
@@ -571,7 +705,7 @@ function applyCropRecommendations() {
     if (replacement) selectField(selectedFeature, replacement);
   }
   const summary = PNG_CROP_ORDER.map((group) => `${CROP_LABELS[group]} ${fmtInt.format(counts.get(group) || 0)}`).join(" · ");
-  document.querySelector("#map-hint").textContent = `Tavsiya tayyor: ${fmtInt.format(assignments.size)} dala, 6/6 ekin joylashtirildi. ${summary}.`;
+  document.querySelector("#map-hint").textContent = `Tavsiya tayyor: ${fmtInt.format(assignments.size)} dala, ${counts.size}/6 ekin joylashtirildi. ${summary}.`;
 }
 
 function renderFieldDecision(properties) {
@@ -597,7 +731,7 @@ function renderFieldDecision(properties) {
     document.querySelector("#field-source-share").textContent = `${fmtInt.format(water.delivery.sourceShare)} m³`;
     document.querySelector("#field-route-loss").textContent = `${fmtDec.format(water.delivery.lossPct)}% · ${fmtInt.format(water.delivery.lossM3)} m³`;
     document.querySelector("#field-delivery-water").textContent = `${fmtInt.format(water.delivery.delivery)} m³`;
-    document.querySelector("#field-delivery-formula").textContent = `${fmtInt.format(number(document.querySelector("#input-water-limit").value) * 1e6)} × ${fmtInt.format(number(properties.seasonal_need_m3))} / ${fmtInt.format(number(properties.district_need_m3))} × (1 − ${fmtDec.format(water.delivery.lossPct)}%) = ${fmtInt.format(water.delivery.delivery)} m³`;
+    document.querySelector("#field-delivery-formula").textContent = `${fmtInt.format(water.delivery.activeLimit)} × ${fmtInt.format(number(properties.seasonal_need_m3))} / ${fmtInt.format(water.delivery.districtNeed)} × (1 − ${fmtDec.format(water.delivery.lossPct)}%) = ${fmtInt.format(water.delivery.delivery)} m³`;
   }
 
   const bonitet = number(properties.bonitet);
@@ -621,12 +755,49 @@ function splitGmrOptions(selected) {
   return ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"].map((value) => `<option value="${value}" ${value === selected ? "selected" : ""}>${value}</option>`).join("");
 }
 
-function startSplitMode() {
+async function loadFieldComponents() {
+  if (fieldComponentIndex.size) return fieldComponentIndex;
+  if (fieldComponentPromise) return fieldComponentPromise;
+  fieldComponentPromise = (async () => {
+    const response = await fetch(FIELD_COMPONENTS_URL, { cache: "no-store" });
+    if (!response.ok) throw new Error(`tuproq/GMR komponentlari yuklanmadi: ${response.status}`);
+    const data = await response.json();
+    const index = new Map();
+    for (const feature of data.features || []) {
+      const fieldId = feature.properties?.field_id;
+      if (!fieldId) continue;
+      if (!index.has(fieldId)) index.set(fieldId, []);
+      index.get(fieldId).push(feature);
+    }
+    fieldComponentIndex = index;
+    return index;
+  })().catch((error) => {
+    fieldComponentPromise = null;
+    throw error;
+  });
+  return fieldComponentPromise;
+}
+
+async function startSplitMode() {
   if (!selectedFeature || !map) return;
   if (!irrigationRules.length) {
     document.querySelector("#map-hint").textContent = "PNG sug‘orish qoidalari yuklanmoqda — bir necha soniyadan keyin qayta urinib ko‘ring.";
     return;
   }
+  const requestedFeature = selectedFeature;
+  const splitButton = document.querySelector("#toolbar-start-split");
+  splitButton.disabled = true;
+  document.querySelector("#map-hint").textContent = "Split uchun asl tuproq/GMR chegaralari yuklanmoqda…";
+  try {
+    await loadFieldComponents();
+  } catch (error) {
+    document.querySelector("#map-hint").textContent = `Split boshlanmadi: ${error.message}`;
+    console.error(error);
+    splitButton.disabled = false;
+    return;
+  }
+  splitButton.disabled = false;
+  if (selectedFeature !== requestedFeature) return;
   cancelSplit(false);
   splitState.active = true;
   splitState.parent = selectedFeature;
@@ -656,6 +827,14 @@ function onSplitMapClick(event) {
   } catch (error) {
     document.querySelector("#map-hint").textContent = `Split amalga oshmadi: ${error.message}. Qayta chizing.`;
     console.error(error);
+    for (const marker of splitState.markers) map.removeLayer(marker);
+    if (splitState.line) map.removeLayer(splitState.line);
+    splitState.points = [];
+    splitState.markers = [];
+    splitState.line = null;
+    splitState.active = true;
+    map.getContainer().classList.add("split-cursor");
+    map.on("click", onSplitMapClick);
   }
 }
 
@@ -682,6 +861,61 @@ function scaledSoilComponents(properties, ratio, partArea) {
   return source.map((component) => ({ ...component, area_ha: number(component.area_ha) * scale }));
 }
 
+function spatialPartContext(parentProperties, partFeature, partArea) {
+  const parentId = parentProperties.field_id || parentProperties.feature_id;
+  const sources = fieldComponentIndex.get(parentId) || [];
+  const overlaps = [];
+  for (const source of sources) {
+    try {
+      const intersection = turf.intersect(turf.featureCollection([partFeature, source]));
+      if (!intersection) continue;
+      const areaM2 = turf.area(intersection);
+      if (areaM2 > 0.01) overlaps.push({ properties: source.properties || {}, areaM2 });
+    } catch (error) {
+      console.warn(`Split komponenti kesilmadi: ${parentId}`, error);
+    }
+  }
+  const rawAreaM2 = sum(overlaps, (item) => item.areaM2);
+  const geometryAreaM2 = turf.area(partFeature);
+  const coveragePct = percent(rawAreaM2, geometryAreaM2);
+  if (!overlaps.length || coveragePct < 70) {
+    return {
+      components: scaledSoilComponents(parentProperties, partArea / Math.max(number(parentProperties.maydoni), .000001), partArea),
+      coveragePct, status: "proportional_fallback", route: null, sourceParts: 0,
+    };
+  }
+  const componentGroups = new Map();
+  const routeGroups = new Map();
+  for (const overlap of overlaps) {
+    const p = overlap.properties;
+    const component = { gmr: p.gmr_mvp || null, bonitet: p.bonitet, tm1: p.Tm1, zone: p.irrigation_zone || null };
+    const componentKey = JSON.stringify(component);
+    if (!componentGroups.has(componentKey)) componentGroups.set(componentKey, { ...component, rawAreaM2: 0 });
+    componentGroups.get(componentKey).rawAreaM2 += overlap.areaM2;
+    const routeKey = `${p.water_route || ""}\u001f${p.water_block_id || ""}`;
+    if (!routeGroups.has(routeKey)) routeGroups.set(routeKey, { properties: p, rawAreaM2: 0 });
+    routeGroups.get(routeKey).rawAreaM2 += overlap.areaM2;
+  }
+  const scale = partArea / (rawAreaM2 / 10000);
+  const components = [...componentGroups.values()].map(({ rawAreaM2: componentAreaM2, ...component }) => ({
+    ...component, area_ha: componentAreaM2 / 10000 * scale,
+  })).sort((first, second) => second.area_ha - first.area_ha);
+  const route = [...routeGroups.values()].sort((first, second) => second.rawAreaM2 - first.rawAreaM2)[0]?.properties || null;
+  return { components, coveragePct, status: "spatial_intersection", route, sourceParts: overlaps.length };
+}
+
+function dominantComponentValue(components, key) {
+  const groups = new Map();
+  for (const component of components) groups.set(component[key], (groups.get(component[key]) || 0) + number(component.area_ha));
+  return [...groups.entries()].sort((first, second) => second[1] - first[1])[0]?.[0] ?? null;
+}
+
+function weightedComponentValue(components, key) {
+  const valid = components.filter((component) => Number.isFinite(Number(component[key])));
+  const area = sum(valid, (component) => component.area_ha);
+  return area ? sum(valid, (component) => number(component[key]) * number(component.area_ha)) / area : null;
+}
+
 function createSplitParts() {
   if (!window.turf) throw new Error("geometriya kutubxonasi yuklanmagan");
   const parent = turf.feature(splitState.parent.geometry, { ...splitState.parent.properties });
@@ -701,17 +935,33 @@ function createSplitParts() {
     const part = index === 0 ? "A" : "B";
     const id = `${parentId}-${splitState.scenarioId}-${part}`;
     const partArea = parentArea * rawAreas[index] / rawTotal;
+    const context = spatialPartContext(parent.properties, feature, partArea);
+    const route = context.route;
     feature.id = id;
     feature.properties = {
       ...parent.properties, feature_id: id, field_id: id, parent_field_id: parentId,
       split_scenario_id: splitState.scenarioId, split_part: part, split_status: "scenario",
       maydoni: partArea, split_area_ha: partArea,
-      soil_gmr_components: scaledSoilComponents(parent.properties, rawAreas[index] / rawTotal, partArea),
+      soil_gmr_components: context.components,
+      gmr_mvp: dominantComponentValue(context.components, "gmr"),
+      bonitet: weightedComponentValue(context.components, "bonitet"),
+      Tm1: dominantComponentValue(context.components, "tm1"),
+      irrigation_zone: dominantComponentValue(context.components, "zone"),
+      zone_status: context.status === "spatial_intersection" ? "split_spatial_component" : parent.properties.zone_status,
+      split_component_status: context.status,
+      split_component_coverage_pct: context.coveragePct,
+      split_source_parts: context.sourceParts,
+      water_route: route?.water_route || parent.properties.water_route,
+      water_block_id: route?.water_block_id || parent.properties.water_block_id,
+      route_depth: number(route?.route_depth) || parent.properties.route_depth,
+      route_loss_pct_scn: Number.isFinite(Number(route?.route_loss_pct_scn)) ? Number(route.route_loss_pct_scn) : parent.properties.route_loss_pct_scn,
+      block_match_status: route?.block_match_status || parent.properties.block_match_status,
       crop_group_mvp: PNG_CROP_ORDER.includes(parent.properties.crop_group_mvp) ? parent.properties.crop_group_mvp : null,
     };
     return feature;
   });
   splitState.active = false;
+  districtNeedCache = null;
   applySplitCropRule(splitState.parts[0]);
   applySplitCropRule(splitState.parts[1]);
   renderSplitLayer();
@@ -825,6 +1075,9 @@ function exportSplitGeoJSON() {
 }
 
 function cancelSplit(hidePanel = true) {
+  const parentFeature = splitState.parent;
+  const parentLayer = splitState.parentLayer;
+  const selectedWasSplitPart = selectedFeature?.properties?.split_status === "scenario";
   if (map) { map.off("click", onSplitMapClick); map.getContainer().classList.remove("split-cursor"); }
   for (const marker of splitState.markers || []) map?.removeLayer(marker);
   if (splitState.line) map?.removeLayer(splitState.line);
@@ -832,8 +1085,14 @@ function cancelSplit(hidePanel = true) {
   if (splitState.parentLayer && geoLayer) geoLayer.resetStyle(splitState.parentLayer);
   if (selectedLayer && !selectedLayer.__splitPartLayer && geoLayer) selectedLayer.setStyle({ weight: 4, color: "#fff200", fillOpacity: .92 });
   splitState = { active: false, parent: null, parentLayer: null, points: [], markers: [], line: null, layer: null, parts: [], scenarioId: null };
+  districtNeedCache = null;
   if (hidePanel) document.querySelector("#split-panel").hidden = true;
   document.querySelector("#map-hint").textContent = "Poligon ustiga bosing — dala pasporti ochiladi";
+  if (selectedWasSplitPart && parentFeature && parentLayer) {
+    selectedFeature = null;
+    selectedLayer = null;
+    selectField(parentFeature, parentLayer);
+  }
 }
 
 function renderConclusions() {
@@ -1241,6 +1500,7 @@ function sourceLabel(value) {
   if (value === "observed") return "manba";
   if (value === "manual_user") return "qo‘lda kiritildi";
   if (value === "system_recommendation") return "tizim tavsiyasi";
+  if (value === "split_user_selection") return "split qismi uchun tanlandi";
   if (value === "manual_required") return "kiritilmagan";
   return "yaqin dala taxmini";
 }
@@ -1257,7 +1517,9 @@ function fieldEtCalculation(properties) {
 
 function renderSoilComposition(properties) {
   const components = properties.crop_norm_components?.length ? properties.crop_norm_components : properties.soil_gmr_components || [];
-  document.querySelector("#field-source-parts").textContent = `${fmtInt.format(number(properties.merged_source_parts) || components.length || 1)} GIS qism → 1 dala`;
+  document.querySelector("#field-source-parts").textContent = properties.split_status === "scenario"
+    ? `${fmtInt.format(number(properties.split_source_parts) || components.length || 1)} asl qism · ${fmtInt.format(number(properties.split_component_coverage_pct))}% fazoviy qamrov`
+    : `${fmtInt.format(number(properties.merged_source_parts) || components.length || 1)} GIS qism → 1 dala`;
   document.querySelector("#field-soil-components").innerHTML = components.length ? components.map((component) => {
     const norm = number(component.norm_m3ha);
     const normText = norm ? `${fmtInt.format(norm)} m³/ga${component.exact_rule === false ? " · yaqin GMR qoidasi" : ""}` : `Tm1 ${text(component.tm1)}`;
@@ -1310,7 +1572,7 @@ function selectField(feature, layer) {
     document.querySelector("#field-source-share").textContent = `${fmtInt.format(delivery.sourceShare)} m³`;
     document.querySelector("#field-route-loss").textContent = `${fmtDec.format(delivery.lossPct)}% · ${fmtInt.format(delivery.lossM3)} m³`;
     document.querySelector("#field-delivery-water").textContent = `${fmtInt.format(delivery.delivery)} m³`;
-    document.querySelector("#field-delivery-formula").textContent = `${fmtInt.format(number(document.querySelector("#input-water-limit").value) * 1e6)} × ${fmtInt.format(number(p.seasonal_need_m3))} / ${fmtInt.format(number(p.district_need_m3))} × (1 − ${fmtDec.format(delivery.lossPct)}%) = ${fmtInt.format(delivery.delivery)} m³`;
+    document.querySelector("#field-delivery-formula").textContent = `${fmtInt.format(delivery.activeLimit)} × ${fmtInt.format(number(p.seasonal_need_m3))} / ${fmtInt.format(delivery.districtNeed)} × (1 − ${fmtDec.format(delivery.lossPct)}%) = ${fmtInt.format(delivery.delivery)} m³`;
     const route = waterRouteParts(p), outlet = terminalOutlet(p, route);
     document.querySelector("#field-delivery-note").textContent = `${outlet.number ? `${outlet.number}-quloq` : outlet.code} — tanlangan yo‘lning yakuniy tuguni. Dala ichidagi ariq yoki suv kirish darvozasi geometriyasi manbada yo‘q; hajm 1,5%/daraja ssenariysi, o‘lchangan sarf emas.`;
   }
@@ -1330,72 +1592,6 @@ function selectField(feature, layer) {
   document.querySelector("#field-note").textContent = p.crop_group_mvp ? `${p.crop_mvp_source === "system_recommendation" ? "Ekin tizim tavsiyasi bilan belgilandi" : "Ekin qo‘lda kiritildi"}. Formula dala ichidagi ${p.soil_gmr_components?.length || 1} ta real tuproq/GMR qismi maydonlarini alohida hisoblaydi.` : "Dala geometriyasi va tuproq/GMR tarkibi manbadan olindi; ekin ataylab bo‘sh qoldirilgan va faqat qo‘lda kiritiladi.";
   renderFieldDecision(p);
   renderRouteReport(p);
-}
-
-function populateCropFilter(features) {
-  const select = document.querySelector("#crop-filter");
-  const crops = [...new Set(features.map((feature) => feature.properties.crop_mvp).filter(Boolean))].sort();
-  for (const crop of crops) { const option = document.createElement("option"); option.value = crop; option.textContent = crop; select.append(option); }
-}
-
-function populateGmrFilter(features) {
-  const select = document.querySelector("#gmr-filter");
-  const values = [...new Set(features.map((feature) => feature.properties.gmr_mvp).filter(Boolean))].sort();
-  for (const value of values) { const option = document.createElement("option"); option.value = value; option.textContent = `GMR ${value}`; select.append(option); }
-}
-
-function areaMatches(value, area) {
-  if (value === "under1") return area < 1;
-  if (value === "1to5") return area >= 1 && area < 5;
-  if (value === "5to20") return area >= 5 && area < 20;
-  if (value === "over20") return area >= 20;
-  return true;
-}
-
-function confidenceMatches(value, confidence) {
-  if (value === "high") return confidence >= 80;
-  if (value === "medium") return confidence >= 50 && confidence < 80;
-  if (value === "low") return confidence < 50;
-  return true;
-}
-
-function applyFilters() {
-  if (!fullData) return;
-  if (splitState.active) cancelSplit();
-  const query = document.querySelector("#field-search").value.trim().toLowerCase();
-  const crop = document.querySelector("#crop-filter").value;
-  const status = document.querySelector("#status-filter").value;
-  const zone = document.querySelector("#zone-filter").value;
-  const gmr = document.querySelector("#gmr-filter").value;
-  const area = document.querySelector("#area-filter").value;
-  const confidence = document.querySelector("#confidence-filter").value;
-  const waterStatus = document.querySelector("#water-filter").value;
-  const filtered = fullData.features.filter((feature) => {
-    const p = feature.properties;
-    const searchable = `${p.field_id || ""} ${p.feature_id || ""} ${p.crop_mvp || ""}`.toLowerCase();
-    return (!query || searchable.includes(query))
-      && (crop === "all" || p.crop_mvp === crop)
-      && (status === "all" || p.demo_norm_status === status)
-      && (zone === "all" || p.irrigation_zone === zone)
-      && (gmr === "all" || p.gmr_mvp === gmr)
-      && areaMatches(area, number(p.maydoni))
-      && confidenceMatches(confidence, number(p.zone_confidence))
-      && (waterStatus === "all" || fieldWaterAnalysis(p).key === waterStatus);
-  });
-  renderMapView(filtered);
-}
-
-function resetFilters() {
-  document.querySelector("#field-search").value = "";
-  ["crop-filter", "status-filter", "zone-filter", "gmr-filter", "area-filter", "confidence-filter", "water-filter"].forEach((id) => { document.querySelector(`#${id}`).value = "all"; });
-  applyFilters();
-}
-
-function updateMapMetric() {
-  if (!geoLayer) return;
-  const water = document.querySelector("#map-metric").value === "water";
-  document.querySelector("#map-legend").innerHTML = water ? `<span><i class="legend-dot water-good"></i> Yetarli</span><span><i class="legend-dot water-limited"></i> Cheklangan</span><span><i class="legend-dot water-short"></i> Tanqis</span><span><i class="legend-dot water-severe"></i> Jiddiy tanqis</span>` : `<span><i class="legend-dot ready"></i> Manba asosida</span><span><i class="legend-dot provisional"></i> Taxminiy</span><span><i class="legend-dot incomplete"></i> Norma yo‘q</span>`;
-  geoLayer.setStyle(styleFor);
 }
 
 function initMapPage() {
@@ -1465,6 +1661,7 @@ const initialView = new URLSearchParams(window.location.search).get("view");
 if (initialView === "map" || initialView === "water-balance") showView(initialView);
 loadSummary();
 loadWeather();
+loadOfficialPeriodWeather();
 loadDistrictBalance();
 loadOfficialLimit();
 loadIrrigationRules();

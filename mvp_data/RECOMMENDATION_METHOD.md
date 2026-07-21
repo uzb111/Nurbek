@@ -11,6 +11,14 @@ Tizim faqat quyidagi 6 ekindan foydalanadi: Paxta, Beda, Makkajo‘xori, Sabzavo
 
 Suv normasi dala ichidagi barcha GMR/tuproq qismlari uchun PNG qoidalari bo‘yicha alohida hisoblanadi. Real ET mavjud bo‘lsa suv skorining 30% qismi real ET bilan, 70% qismi limit va tarmoq samaradorligi bilan baholanadi.
 
+`Norm_coverage = mavjud_m3ga / PNG_norm_m3ga × 100`
+
+`ET_coverage = mavjud_m3ga / (real_ET_mm × 10) × 100`
+
+`Water_score = 0.70 × Norm_coverage + 0.30 × ET_coverage`
+
+Shunday qilib real ET talabi oshishi ballni avtomatik oshirmaydi; mavjud suv talabni qanchalik qoplashi baholanadi.
+
 ## Barcha dalaga joylashtirish
 
 Har bir dalaga faqat individual eng yuqori ball berilsa suv tejamkor ekinlar haddan tashqari ko‘payib ketadi. Shu sabab barcha dalalar birgalikda joylashtiriladi:
