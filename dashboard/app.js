@@ -30,7 +30,6 @@ const CROP_COEFFICIENT = { cotton: 1.15, winter_grain: 1.05, alfalfa: 1.10, maiz
 const GROUNDWATER_FACTOR = { I: 0.16, II: 0.14, III: 0.12, IV: 0.10, V: 0.08, VI: 0.06, IX: 0.04 };
 const CROP_LABELS = { cotton: "Paxta", winter_grain: "Bug‘doy", alfalfa: "Beda", maize: "Makkajo‘xori", orchard: "Bog‘", melons: "Poliz", vegetables: "Sabzavot" };
 const PNG_CROP_ORDER = ["cotton", "alfalfa", "maize", "vegetables", "melons", "orchard", "winter_grain"];
-const MANUAL_CROP_STORAGE_KEY = "agrotahlil-manual-crops-v1";
 const CROP_PROFILES = {
   cotton: { minBonitet: 55, textures: [3, 4, 5], heat: 92 }, winter_grain: { minBonitet: 40, textures: [2, 3, 4, 5], heat: 84 },
   alfalfa: { minBonitet: 50, textures: [3, 4, 5], heat: 76 }, maize: { minBonitet: 55, textures: [3, 4, 5], heat: 80 },
@@ -270,6 +269,10 @@ async function loadIrrigationRules() {
       applyStoredCropAssignments(fullData.features);
       if (geoLayer) geoLayer.setStyle(styleFor);
     }
+    if (splitState.parts.length) {
+      splitState.parts.forEach(applySplitCropRule);
+      renderSplitLayer();
+    }
     if (selectedFeature) selectField(selectedFeature, selectedLayer);
   } catch (error) {
     console.error(error);
@@ -277,12 +280,7 @@ async function loadIrrigationRules() {
 }
 
 function loadManualCropAssignments() {
-  try { manualCropAssignments = JSON.parse(localStorage.getItem(MANUAL_CROP_STORAGE_KEY) || "{}"); }
-  catch { manualCropAssignments = {}; }
-}
-
-function saveManualCropAssignments() {
-  localStorage.setItem(MANUAL_CROP_STORAGE_KEY, JSON.stringify(manualCropAssignments));
+  manualCropAssignments = {};
 }
 
 function nearestComponentRule(component, cropGroup) {
@@ -373,7 +371,6 @@ function assignCropToSelectedField() {
   }
   if (cropGroup) manualCropAssignments[properties.field_id] = cropGroup;
   else delete manualCropAssignments[properties.field_id];
-  saveManualCropAssignments();
   applyManualCrop(properties, cropGroup);
   if (selectedLayer) selectedLayer.bindPopup(popupHtml(properties));
   if (geoLayer) geoLayer.setStyle(styleFor);
@@ -560,6 +557,16 @@ function halfPlanePolygon(pointA, pointB, sign, extent) {
   return turf.polygon([[a, b, c, d, a]]);
 }
 
+function scaledSoilComponents(properties, ratio, partArea) {
+  const source = properties.soil_gmr_components?.length ? properties.soil_gmr_components : [{
+    area_ha: number(properties.maydoni), gmr: properties.gmr_mvp, bonitet: properties.bonitet,
+    tm1: properties.Tm1, zone: properties.irrigation_zone,
+  }];
+  const sourceArea = sum(source, (component) => component.area_ha) || number(properties.maydoni) || 1;
+  const scale = partArea / sourceArea;
+  return source.map((component) => ({ ...component, area_ha: number(component.area_ha) * scale }));
+}
+
 function createSplitParts() {
   if (!window.turf) throw new Error("geometriya kutubxonasi yuklanmagan");
   const parent = turf.feature(splitState.parent.geometry, { ...splitState.parent.properties });
@@ -578,11 +585,13 @@ function createSplitParts() {
   splitState.parts = [positive, negative].map((feature, index) => {
     const part = index === 0 ? "A" : "B";
     const id = `${parentId}-${splitState.scenarioId}-${part}`;
+    const partArea = parentArea * rawAreas[index] / rawTotal;
     feature.id = id;
     feature.properties = {
       ...parent.properties, feature_id: id, field_id: id, parent_field_id: parentId,
       split_scenario_id: splitState.scenarioId, split_part: part, split_status: "scenario",
-      maydoni: parentArea * rawAreas[index] / rawTotal, split_area_ha: parentArea * rawAreas[index] / rawTotal,
+      maydoni: partArea, split_area_ha: partArea,
+      soil_gmr_components: scaledSoilComponents(parent.properties, rawAreas[index] / rawTotal, partArea),
       crop_group_mvp: PNG_CROP_ORDER.includes(parent.properties.crop_group_mvp) ? parent.properties.crop_group_mvp : null,
     };
     return feature;
@@ -607,37 +616,13 @@ function exactSplitRule(properties) {
 
 function applySplitCropRule(feature) {
   const properties = feature.properties;
-  properties.crop_mvp = CROP_LABELS[properties.crop_group_mvp] || null;
-  properties.crop_mvp_source = "split_user_selection";
   if (!properties.crop_group_mvp) {
-    Object.assign(properties, {
-      crop_norm_components: [], norm_m3ha_mvp: null, planned_water_m3_mvp: null, seasonal_need_m3: null,
-      irrigation_count_mvp: null, irrigation_start_mvp: null, irrigation_end_mvp: null,
-      demo_norm_status: "crop_required", norm_source: null, delivery_calc_status: "norm_unavailable",
-    });
+    clearFieldCrop(properties);
+    properties.crop_mvp_source = "split_user_selection";
     return;
   }
-  const rule = exactSplitRule(properties);
-  if (!rule) {
-    Object.assign(properties, {
-      crop_norm_components: [], norm_m3ha_mvp: null, planned_water_m3_mvp: null, seasonal_need_m3: null,
-      irrigation_count_mvp: null, irrigation_start_mvp: null, irrigation_end_mvp: null,
-      demo_norm_status: "demo_norm_unavailable", norm_source: null, delivery_calc_status: "norm_unavailable",
-    });
-    return;
-  }
-  const norm = number(rule.seasonal_norm_m3ha);
-  const area = number(properties.maydoni);
-  const seasonalNeed = area * norm;
-  Object.assign(properties, {
-    crop_norm_components: [{ area_ha: area, gmr: properties.gmr_mvp, bonitet: properties.bonitet, tm1: properties.Tm1,
-      zone: properties.irrigation_zone, rule_gmr: rule.gmr, exact_rule: true, norm_m3ha: norm, water_m3: seasonalNeed,
-      irrigation_pattern: rule.irrigation_pattern, start: rule.start_month_day, end: rule.end_month_day, source: rule.source }],
-    norm_m3ha_mvp: norm, planned_water_m3_mvp: seasonalNeed, seasonal_need_m3: seasonalNeed,
-    irrigation_count_mvp: rule.irrigation_pattern, irrigation_start_mvp: rule.start_month_day, irrigation_end_mvp: rule.end_month_day,
-    demo_norm_status: "demo_ready_proxy", norm_source: rule.source,
-    delivery_calc_status: seasonalNeed && properties.water_route ? "scenario_ready" : "norm_unavailable",
-  });
+  applyManualCrop(properties, properties.crop_group_mvp);
+  properties.crop_mvp_source = "split_user_selection";
 }
 
 function splitPartSummary(feature) {
@@ -1168,7 +1153,7 @@ function selectField(feature, layer) {
   const nextId = feature.properties.field_id || feature.properties.feature_id;
   const splitParentId = splitState.parent?.properties?.field_id || splitState.parent?.properties?.feature_id;
   const isSplitPart = feature.properties.split_status === "scenario";
-  if (splitState.parts.length && !isSplitPart && nextId !== splitParentId) cancelSplit();
+  if (splitState.active && !isSplitPart && nextId !== splitParentId) return;
   const p = feature.properties;
   if (selectedLayer && selectedLayer !== layer) {
     if (selectedLayer.__splitPartLayer) restoreSplitPartStyle(selectedLayer);
@@ -1257,7 +1242,7 @@ function confidenceMatches(value, confidence) {
 
 function applyFilters() {
   if (!fullData) return;
-  if (splitState.active || splitState.parts.length) cancelSplit();
+  if (splitState.active) cancelSplit();
   const query = document.querySelector("#field-search").value.trim().toLowerCase();
   const crop = document.querySelector("#crop-filter").value;
   const status = document.querySelector("#status-filter").value;
