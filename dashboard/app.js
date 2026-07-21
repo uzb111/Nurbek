@@ -1605,31 +1605,28 @@ function terminalOutlet(properties, route) {
 }
 
 function routeChartSvg(steps, fieldLimit) {
-  const width = 900, height = 270, left = 58, right = 74, top = 30, bottom = 48;
+  const width = 960, height = 300, left = 70, right = 28, top = 42, bottom = 62;
   const chartWidth = width - left - right, chartHeight = height - top - bottom;
-  const countMaximum = Math.max(...steps.flatMap((step) => [step.fields, step.blocks]), 1);
   const waterMaximum = Math.max(fieldLimit, ...steps.map((step) => step.selectedWater), 1);
   const x = (index) => left + (steps.length === 1 ? chartWidth / 2 : index * chartWidth / (steps.length - 1));
-  const countY = (value) => top + chartHeight - value / countMaximum * chartHeight;
   const waterY = (value) => top + chartHeight - value / waterMaximum * chartHeight;
-  const line = (key, scale) => steps.map((step, index) => `${x(index)},${scale(step[key])}`).join(" ");
-  const waterPoints = line("selectedWater", waterY);
+  const waterPoints = steps.map((step, index) => `${x(index)},${waterY(step.selectedWater)}`).join(" ");
+  const limitY = waterY(fieldLimit);
+  const lossArea = `${steps.map((_, index) => `${x(index)},${limitY}`).join(" ")} ${[...steps].reverse().map((step, reverseIndex) => `${x(steps.length - 1 - reverseIndex)},${waterY(step.selectedWater)}`).join(" ")}`;
   const waterArea = `${left},${top + chartHeight} ${waterPoints} ${x(steps.length - 1)},${top + chartHeight}`;
   const grids = [0, .25, .5, .75, 1].map((ratio) => {
-    const chartY = top + chartHeight * ratio;
-    return `<line x1="${left}" y1="${chartY}" x2="${width - right}" y2="${chartY}" stroke="#dfe9e2" stroke-width="1"/><text x="${left - 8}" y="${chartY + 3}" text-anchor="end" fill="#718076" font-size="9">${fmtInt.format(countMaximum * (1 - ratio))}</text><text x="${width - right + 8}" y="${chartY + 3}" text-anchor="start" fill="#0f6fff" font-size="9" font-weight="700">${fmtInt.format(waterMaximum * (1 - ratio))}</text>`;
+    const value = waterMaximum * ratio;
+    const chartY = waterY(value);
+    return `<line x1="${left}" y1="${chartY}" x2="${width - right}" y2="${chartY}" stroke="#dfe9e3" stroke-width="1"/><text x="${left - 10}" y="${chartY + 3}" text-anchor="end" fill="#718076" font-size="10">${fmtInt.format(value)}</text>`;
   }).join("");
-  const dots = (key, color, scale, label) => steps.map((step, index) => `<circle cx="${x(index)}" cy="${scale(step[key])}" r="4" fill="${color}" stroke="#fff" stroke-width="2"><title>${index + 1}-bosqich · ${escapeHtml(step.name)} · ${label}: ${fmtInt.format(step[key])}${key === "selectedWater" ? " m³" : ""}</title></circle>`).join("");
-  const xLabels = steps.map((step, index) => `<text x="${x(index)}" y="${height - 18}" text-anchor="middle" fill="#52655a" font-size="9" font-weight="650">LVL ${index}</text>`).join("");
+  const dots = steps.map((step, index) => `<g><circle cx="${x(index)}" cy="${waterY(step.selectedWater)}" r="5" fill="#fff" stroke="#1174ee" stroke-width="3"><title>${index + 1}-bo‘g‘in · ${escapeHtml(step.name)} · ${fmtInt.format(step.selectedWater)} m³</title></circle>${index === 0 || index === steps.length - 1 || index % 2 === 0 ? `<text x="${x(index)}" y="${waterY(step.selectedWater) - 11}" text-anchor="middle" fill="#0d5fc3" font-size="9" font-weight="800">${fmtInt.format(step.selectedWater)} m³</text>` : ""}</g>`).join("");
+  const xLabels = steps.map((step, index) => {
+    const label = index === 0 ? "Bosh manba" : index === steps.length - 1 ? "Yakuniy quloq" : `${index + 1}-bo‘g‘in`;
+    return `<text x="${x(index)}" y="${height - 28}" text-anchor="middle" fill="#244f36" font-size="9" font-weight="750">${label}</text><text x="${x(index)}" y="${height - 13}" text-anchor="middle" fill="#748178" font-size="8">${fmtInt.format(step.fields)} dala yo‘li</text>`;
+  }).join("");
   const finalStep = steps[steps.length - 1];
-  const finalX = x(steps.length - 1), finalY = waterY(finalStep.selectedWater);
-  const limitY = waterY(fieldLimit);
-  const limitLabelY = Math.max(27, limitY - 7);
-  const calloutWidth = 164, calloutHeight = 30;
-  const calloutX = Math.max(left, finalX - calloutWidth - 10);
-  const calloutY = finalY < top + 38 ? finalY + 12 : finalY - 38;
-  const finalCallout = `<g><line x1="${finalX}" y1="${finalY}" x2="${finalX - 12}" y2="${calloutY + calloutHeight / 2}" stroke="#0f6fff" stroke-width="2"/><rect x="${calloutX}" y="${calloutY}" width="${calloutWidth}" height="${calloutHeight}" rx="8" fill="#0f6fff"/><text x="${calloutX + calloutWidth / 2}" y="${calloutY + 12}" text-anchor="middle" fill="#dff4ff" font-size="8" font-weight="700">QULOQDAN DALAGA</text><text x="${calloutX + calloutWidth / 2}" y="${calloutY + 24}" text-anchor="middle" fill="#fff" font-size="12" font-weight="800">${fmtInt.format(finalStep.selectedWater)} m³</text></g>`;
-  return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Tanlangan dala suv limiti, yakuniy quloqdan hisobiy suv, tarmoqdagi dalalar va quloqlar"><defs><linearGradient id="routeWaterArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0f6fff" stop-opacity=".28"/><stop offset="100%" stop-color="#00b7ff" stop-opacity=".02"/></linearGradient></defs><text x="${left}" y="16" fill="#17663b" font-size="9" font-weight="700">DALA / QULOQ SONI</text><text x="${width - right}" y="16" text-anchor="end" fill="#0f6fff" font-size="9" font-weight="800">TANLANGAN DALA SUVI · m³</text>${grids}<polygon points="${waterArea}" fill="url(#routeWaterArea)"/><line class="route-limit-line" x1="${left}" y1="${limitY}" x2="${width - right}" y2="${limitY}" stroke="#7656d8" stroke-width="3"><title>Hisobiy dala limiti: ${fmtInt.format(fieldLimit)} m³</title></line><text x="${left + 8}" y="${limitLabelY}" fill="#6847ce" font-size="10" font-weight="800">HISOBIY LIMIT ${fmtInt.format(fieldLimit)} m³</text><polyline class="route-count-line" points="${line("fields", countY)}" fill="none" stroke="#20a866" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><polyline class="route-count-line" points="${line("blocks", countY)}" fill="none" stroke="#f3a51b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><polyline class="route-water-line" points="${waterPoints}" fill="none" stroke="#0f6fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>${dots("fields", "#20a866", countY, "dala")}${dots("blocks", "#f3a51b", countY, "yakuniy quloq")}${dots("selectedWater", "#0f6fff", waterY, "dala suvi")}${finalCallout}${xLabels}</svg>`;
+  const retained = percent(finalStep.selectedWater, fieldLimit);
+  return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Bosh manbadan yakuniy quloqqacha tanlangan dala suvining hisobiy kamayishi"><defs><linearGradient id="routeWaterArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1687ff" stop-opacity=".28"/><stop offset="100%" stop-color="#1687ff" stop-opacity=".02"/></linearGradient><linearGradient id="routeLossArea" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#f3a51b" stop-opacity=".05"/><stop offset="100%" stop-color="#f3a51b" stop-opacity=".3"/></linearGradient></defs><text x="${left}" y="18" fill="#52665a" font-size="10" font-weight="700">SUV HAJMI · m³</text><text x="${width - right}" y="18" text-anchor="end" fill="#0d6ed8" font-size="10" font-weight="800">DALAGA QOLGAN ULUSH ${fmtDec.format(retained)}%</text>${grids}<polygon points="${waterArea}" fill="url(#routeWaterArea)"/><polygon points="${lossArea}" fill="url(#routeLossArea)"/><line class="route-limit-line" x1="${left}" y1="${limitY}" x2="${width - right}" y2="${limitY}" stroke="#7057d8" stroke-width="2.5" stroke-dasharray="9 7"/><polyline class="route-water-line" points="${waterPoints}" fill="none" stroke="#1174ee" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>${dots}${xLabels}</svg>`;
 }
 
 function renderRouteReport(properties) {
@@ -1662,11 +1659,11 @@ function renderRouteReport(properties) {
   const largestDrop = drops.sort((first, second) => second.drop - first.drop)[0];
   const outletLabel = outlet.number ? `${outlet.number}-quloq` : outlet.code;
   empty.hidden = true; data.hidden = false;
-  document.querySelector("#route-report-title").textContent = `${outletLabel} orqali suv oladi`;
-  document.querySelector("#route-report-subtitle").textContent = `${route[0]} → ${outlet.code} · LAST_lvl_0 dan LAST_lvl_${route.length - 1} gacha.`;
-  document.querySelector("#route-metrics").innerHTML = `<div><span>Tarmoq chuqurligi</span><strong>${route.length} daraja</strong><small>LVL 0 — LVL ${route.length - 1}</small></div><div><span>Yakuniy quloq</span><strong>${escapeHtml(outletLabel)}</strong><small>${escapeHtml(outlet.code)}</small></div><div><span>Quloq xizmat hududi</span><strong>${fmtInt.format(selected.fields)} dala</strong><small>${fmtInt.format(selected.sourceParts)} tuproq/GMR hisobiy qismi</small></div><div><span>Quloqdan dalaga</span><strong>${selectedScenario ? `${fmtInt.format(selectedScenario.delivery)} m³` : "Ekin tanlang"}</strong><small>${selectedScenario ? `${fmtInt.format(selectedScenario.lossM3)} m³ ssenariy yo‘qotish` : "suv formulasi shundan keyin chiqadi"}</small></div>`;
-  document.querySelector("#route-explanation").innerHTML = `<strong>${escapeHtml(outletLabel)}</strong> — tanlangan dala yo‘lining terminal tuguni. U ${fmtInt.format(selected.fields)} ta yagona dalaga xizmat qiladigan bitta yakuniy quloq; ${fmtInt.format(selected.sourceParts)} soni esa alohida dala emas, shu dalalarning tuproq/GMR hisobiy qismlaridir.${largestDrop?.drop > 0 ? ` Eng katta tarmoq ajralishi LVL ${largestDrop.from.index - 1} → LVL ${largestDrop.to.index - 1}: ${fmtInt.format(largestDrop.from.fields)} daladan ${fmtInt.format(largestDrop.to.fields)} dala shu yo‘nalishda qoladi. Bu suv yo‘qotilishi emas.` : ""}`;
-  document.querySelector("#route-stage-list").innerHTML = steps.map((step, index) => `<div class="route-stage-item"><span>LVL ${index} · ${index + 1}-DARAJA</span><strong>${escapeHtml(step.name)}</strong><small>${fmtInt.format(step.fields)} dala · ${fmtInt.format(step.blocks)} quyi yakuniy quloq</small></div>`).join("");
+  document.querySelector("#route-report-title").textContent = `${outletLabel} orqali dalaga suv yetadi`;
+  document.querySelector("#route-report-subtitle").textContent = `Bosh manba: ${route[0]} · ${route.length} ta tarmoq bo‘g‘ini · yakun: ${outlet.code}.`;
+  document.querySelector("#route-metrics").innerHTML = `<div><span>Bosh manbadan ajratildi</span><strong>${selectedScenario ? `${fmtInt.format(selectedScenario.sourceShare)} m³` : "Ekin tanlang"}</strong><small>tanlangan dala uchun hisobiy ulush</small></div><div><span>Yo‘l bo‘yicha yo‘qotish</span><strong>${selectedScenario ? `${fmtDec.format(selectedScenario.lossPct)}%` : "—"}</strong><small>${selectedScenario ? `${fmtInt.format(selectedScenario.lossM3)} m³ ssenariy` : "ekin tanlangach hisoblanadi"}</small></div><div><span>Dalaga yetib keladi</span><strong>${selectedScenario ? `${fmtInt.format(selectedScenario.delivery)} m³` : "Ekin tanlang"}</strong><small>yakuniy quloqdan dala uchun</small></div><div><span>Quloq xizmat hududi</span><strong>${fmtInt.format(selected.fields)} dala</strong><small>${escapeHtml(outletLabel)} orqali suv oladi</small></div>`;
+  document.querySelector("#route-explanation").innerHTML = `<strong>Grafikni qanday o‘qish kerak?</strong> Binafsha punktir — manbada ushbu dala uchun ajratilgan suv. Ko‘k chiziq suvning ${route.length} ta bo‘g‘indan o‘tib, <strong>${escapeHtml(outletLabel)}</strong> orqali dalaga yetguncha hisobiy kamayishini ko‘rsatadi. ${fmtInt.format(selected.fields)} dala — shu yakuniy quloqqa biriktirilgan dalalar soni; bu quloqlar soni emas.${largestDrop?.drop > 0 ? ` Eng katta yo‘nalish ajralishi ${largestDrop.from.index}- va ${largestDrop.to.index}-bo‘g‘in oralig‘ida: ${fmtInt.format(largestDrop.from.fields)} daladan ${fmtInt.format(largestDrop.to.fields)} dala shu shoxda davom etadi.` : ""}`;
+  document.querySelector("#route-stage-list").innerHTML = steps.map((step, index) => `<div class="route-stage-item"><span>${index === 0 ? "BOSH MANBA" : index === steps.length - 1 ? "YAKUNIY QULOQ" : `${index + 1}-BO‘G‘IN`}</span><strong>${escapeHtml(step.name)}</strong><small>Shu yo‘nalishda ${fmtInt.format(step.fields)} dala · ${fmtInt.format(step.blocks)} yakuniy quloq</small></div>`).join("");
   const chart = document.querySelector("#route-chart");
   const legend = document.querySelector(".route-chart-legend");
   chart.hidden = !selectedScenario;
@@ -1724,7 +1721,7 @@ function selectField(feature, layer) {
   document.querySelector("#field-title").textContent = `Dala ${String(p.field_id || p.feature_id).slice(0, 8)}`;
   const meta = getMeta(p.demo_norm_status);
   const status = document.querySelector("#field-status"); status.textContent = meta.label; status.className = `status-pill ${meta.className}`;
-  document.querySelector("#field-confidence").textContent = text(p.zone_confidence, "0");
+  document.querySelector("#field-confidence").textContent = fmtInt.format(number(p.zone_confidence));
   document.querySelector("#confidence-ring").style.setProperty("--ring", number(p.zone_confidence));
   document.querySelector("#field-zone").textContent = p.irrigation_zone === "boz" ? "Bo‘z mintaqasi" : p.irrigation_zone === "chol" ? "Cho‘l mintaqasi" : "Aniqlanmagan";
   document.querySelector("#field-zone-note").textContent = p.zone_status === "exclusive_gmr" ? "GMR bo‘yicha aniqlangan" : `Hududiy taxmin · ${fmtInt.format(number(p.zone_distance_m))} m`;

@@ -7,7 +7,7 @@ const port = 9333;
 const profile = path.join(os.tmpdir(), `agrotahlil-edge-${process.pid}`);
 const browser = spawn(edge, [
   "--headless=new", "--disable-gpu", "--no-sandbox", `--remote-debugging-port=${port}`,
-  `--user-data-dir=${profile}`, "http://127.0.0.1:5173/dashboard/?view=map",
+  "--window-size=1600,1000", `--user-data-dir=${profile}`, "http://127.0.0.1:5173/dashboard/?view=map",
 ], { windowsHide: true, stdio: "ignore" });
 
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -83,6 +83,35 @@ try {
   if (Math.abs(recommendation.supplied - recommendation.officialLimit * .88) > 10000) throw new Error("Boshlang‘ich berilgan suv rasmiy limitning 88% iga teng emas");
   if (Math.abs(recommendation.used - recommendation.supplied * .82) > 10000) throw new Error("Boshlang‘ich ishlatilgan suv berilgan suvning 82% iga teng emas");
   if (!recommendation.periodLabel.includes("2025-04-01") || recommendation.realEt <= 0) throw new Error("Tuman balansi rasmiy davr va real ETga o‘tmadi");
+
+  const routeUi = await evaluate(`(() => {
+    const target = fullData.features.find((feature) => feature.properties.water_route && feature.properties.crop_group_mvp && feature.properties.route_depth >= 6);
+    let targetLayer = null;
+    geoLayer.eachLayer((layer) => { if (layer.feature === target) targetLayer = layer; });
+    selectField(target, targetLayer);
+    return {
+      confidence: document.querySelector("#field-confidence").textContent,
+      title: document.querySelector("#route-report-title").textContent,
+      subtitle: document.querySelector("#route-report-subtitle").textContent,
+      legend: document.querySelector(".route-chart-legend").textContent,
+      explanation: document.querySelector("#route-explanation").textContent,
+      chartLabel: document.querySelector("#route-chart svg")?.getAttribute("aria-label"),
+      chartText: document.querySelector("#route-chart").textContent,
+    };
+  })()`);
+  if (!/^\d{1,3}$/.test(routeUi.confidence)) throw new Error("Zona ishonchliligi halqadan chiqadigan kasr son bo‘lib qoldi");
+  if (!routeUi.title.includes("dalaga suv yetadi") || !routeUi.subtitle.includes("tarmoq bo‘g‘ini")) throw new Error("Suv yo‘li sarlavhasi oddiy tilda emas");
+  if (!routeUi.legend.includes("Har bo‘g‘indan keyin qolgan suv") || routeUi.chartText.includes("LVL")) throw new Error("Route chart eski LVL terminlaridan tozalanmadi");
+  if (!routeUi.explanation.includes("Grafikni qanday o‘qish kerak") || !routeUi.chartLabel) throw new Error("Route chart izohi yoki accessibility yorlig‘i yo‘q");
+  if (process.env.CAPTURE_ROUTE_UI) {
+    await evaluate(`document.querySelector("#route-report").scrollIntoView({ block: "start" })`);
+    await delay(500);
+    const screenshot = await command("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+    const screenshotPath = path.join(os.tmpdir(), "agrotahlil-route-report.png");
+    const { writeFile } = await import("node:fs/promises");
+    await writeFile(screenshotPath, Buffer.from(screenshot.data, "base64"));
+    console.log(JSON.stringify({ routeScreenshot: screenshotPath }, null, 2));
+  }
 
   const split = await evaluate(`(async () => {
     const target = fullData.features.find((feature) => feature.properties.soil_gmr_components?.length > 1 && feature.properties.maydoni > 2);

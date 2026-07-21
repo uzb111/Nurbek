@@ -6,7 +6,7 @@
     <title>AgroTahlil — Yer va suv tahlili</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2317663b'/%3E%3Cpath d='M16 42C26 39 37 29 45 15c3 19-7 31-23 34M18 47c7-11 14-17 24-23' fill='none' stroke='%23fff' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="./styles.css?v=20260721-concept3" />
+    <link rel="stylesheet" href="./styles.css?v=20260721-routefix2" />
   </head>
   <body>
     <div class="app-shell">
@@ -247,10 +247,10 @@
                 <div id="route-report-data" hidden>
                   <div class="route-metrics" id="route-metrics"></div>
                   <div class="route-explanation" id="route-explanation"></div>
-                  <div class="route-chart-legend"><span><i class="limit-line"></i> Hisobiy dala limiti</span><span><i class="delivery-line"></i> Quloqdan dalaga hisobiy suv</span><span><i class="polygon-line"></i> Shu yo‘nalishda qolgan dalalar</span><span><i class="outlet-line"></i> Quyi yakuniy quloqlar</span></div>
+                  <div class="route-chart-legend"><span><i class="limit-line"></i> Manbada dala uchun ajratilgan suv</span><span><i class="delivery-line"></i> Har bo‘g‘indan keyin qolgan suv</span><span><i class="loss-area"></i> Hisobiy tarmoq yo‘qotishi</span></div>
                   <div class="route-chart" id="route-chart"></div>
                   <div class="route-stage-list" id="route-stage-list"></div>
-                  <p class="route-disclaimer">Binafsha chiziq — tuman limitidan dala talabiga mutanosib hisobiy ulush. Ko‘k chiziq yakuniy quloqqacha ssenariy kamayishini ko‘rsatadi. Fizik dala kirish darvozasi yoki ichki ariq geometriyasi manbada yo‘q; shu sabab ko‘rsatilgan hajm o‘lchangan kirish emas, yakuniy quloqdan dalaga ajratilgan hisobiy hajmdir.</p>
+                  <p class="route-disclaimer"><strong>Muhim:</strong> suv hajmi o‘lchagichdan kelgan fakt emas. U rasmiy tuman limiti, dala talabi va har bir tarmoq bo‘g‘iniga 1,5% yo‘qotish ssenariysi asosida hisoblangan. Fizik dala kirish darvozasi ma’lumoti kelganda natija real o‘lchov bilan almashtiriladi.</p>
                 </div>
               </section>
             </div>
@@ -307,6 +307,6 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="./app.js?v=20260721-concept3"></script>
+    <script src="./app.js?v=20260721-routefix2"></script>
   </body>
 </html>

@@ -299,3 +299,26 @@ body { background:radial-gradient(circle at 80% 0,rgba(179,218,190,.18),transpar
   .dashboard-mode .app-shell { display:block; }.dashboard-mode .main-content { padding:0; }
   .concept-card,.concept-kpi { box-shadow:none; break-inside:avoid; }
 }
+
+/* Field passport overflow and readable canal-to-field route report */
+.confidence-ring { place-content:center; place-items:center; overflow:hidden; font-variant-numeric:tabular-nums; }
+.confidence-ring > span { width:43px; display:block; overflow:hidden; text-align:center; text-overflow:clip; white-space:nowrap; }
+.field-score-row > div:last-child { min-width:0; }
+.field-score-row > div:last-child strong,.field-score-row > div:last-child p { overflow-wrap:anywhere; }
+.route-report { background:linear-gradient(155deg,#fff 0%,#f6fbff 56%,#f1f8f4 100%); }
+.route-metrics div:nth-child(1)::before { background:#7057d8; }.route-metrics div:nth-child(1) strong { color:#6246c6; }
+.route-metrics div:nth-child(2)::before { background:#e39a19; }.route-metrics div:nth-child(2) strong { color:#b36d0d; }
+.route-metrics div:nth-child(3)::before { background:#1174ee; }.route-metrics div:nth-child(3) strong { color:#0d67ca; }
+.route-metrics div:nth-child(4)::before { background:#1e9b62; }.route-metrics div:nth-child(4) strong { color:#167b4d; }
+.route-chart-legend { padding-bottom:11px; }
+.route-chart-legend i.loss-area { height:8px; border:1px solid #e8b45b; background:linear-gradient(90deg,rgba(243,165,27,.08),rgba(243,165,27,.42)); }
+.route-chart { height:330px; border-color:#cbdde7; background:linear-gradient(180deg,#fff,#f5faff); }
+.route-explanation { border-color:#bfd8eb; border-left:4px solid #1174ee; background:#f1f8fe; color:#31556b; font-size:11px; }
+.route-explanation strong { color:#0d67ca; }
+.route-stage-list { grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; }
+.route-stage-item { position:relative; min-height:74px; padding:10px 11px 10px 38px; border-color:#d4e2da; }
+.route-stage-item::before { content:""; position:absolute; left:13px; top:14px; width:14px; height:14px; border:3px solid #1174ee; border-radius:50%; background:#fff; box-shadow:0 0 0 4px #e7f2ff; }
+.route-stage-item span { color:#0d67ca; font-size:8px; }
+.route-stage-item strong { font-size:10px; line-height:1.35; }
+.route-stage-item small { margin-top:4px; line-height:1.35; }
+.route-disclaimer { border:1px solid #f0d39b; font-size:10px; }
