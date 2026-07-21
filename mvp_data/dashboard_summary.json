@@ -1,0 +1,185 @@
+{
+  "generated_at": "2026-07-19T06:03:05.410Z",
+  "source_features": "mvp_data/geojson/fields_demo_mvp.geojson",
+  "totals": {
+    "polygons": 13231,
+    "fields": 10710,
+    "area_ha": 61922.12425175648,
+    "planned_water_m3": 325704309.3483604,
+    "weighted_norm_m3ha": 5259.902067056776,
+    "observed_polygons": 2213,
+    "estimated_polygons": 11018,
+    "observed_water_m3": 60449167.06784387,
+    "estimated_water_m3": 265255142.2805167,
+    "crop_proxy_polygons": 2518,
+    "gmr_proxy_polygons": 1757,
+    "zone_estimated_polygons": 10364,
+    "bonitet_missing_polygons": 1080,
+    "small_polygons_under_01ha": 596,
+    "long_crop_proxy_over_500m": 95,
+    "long_gmr_proxy_over_500m": 284,
+    "top_10_percent_water_share": 43.18140816902531,
+    "area_median_ha": 2.3765648504347126,
+    "area_p90_ha": 11.625161534059824,
+    "norm_min_m3ha": 2200,
+    "norm_max_m3ha": 12400
+  },
+  "crops": [
+    {
+      "label": "Paxta",
+      "polygons": 3178,
+      "area_ha": 21188.482472850632,
+      "water_m3": 132843844.96096246
+    },
+    {
+      "label": "Beda",
+      "polygons": 3968,
+      "area_ha": 9417.680396766928,
+      "water_m3": 83395352.81087072
+    },
+    {
+      "label": "Bug'doy",
+      "polygons": 4333,
+      "area_ha": 25195.22237096119,
+      "water_m3": 76459988.42828885
+    },
+    {
+      "label": "Makkajo'xori",
+      "polygons": 942,
+      "area_ha": 3889.1086317693002,
+      "water_m3": 22962871.62808473
+    },
+    {
+      "label": "Bog'",
+      "polygons": 730,
+      "area_ha": 1907.7662585308972,
+      "water_m3": 8504215.219581619
+    },
+    {
+      "label": "Qovun",
+      "polygons": 65,
+      "area_ha": 278.1108149465275,
+      "water_m3": 999645.0035459785
+    },
+    {
+      "label": "Sabzi",
+      "polygons": 4,
+      "area_ha": 37.5436383980445,
+      "water_m3": 451868.9481838541
+    },
+    {
+      "label": "Kartoshka",
+      "polygons": 9,
+      "area_ha": 6.426578377343405,
+      "water_m3": 66678.5875547726
+    },
+    {
+      "label": "Piyoz",
+      "polygons": 2,
+      "area_ha": 1.7830891555445039,
+      "water_m3": 19843.761286589586
+    }
+  ],
+  "crop_groups": [
+    {
+      "label": "cotton",
+      "polygons": 3178,
+      "area_ha": 21188.482472850632,
+      "water_m3": 132843844.96096246
+    },
+    {
+      "label": "alfalfa",
+      "polygons": 3968,
+      "area_ha": 9417.680396766928,
+      "water_m3": 83395352.81087072
+    },
+    {
+      "label": "winter_grain",
+      "polygons": 4333,
+      "area_ha": 25195.22237096119,
+      "water_m3": 76459988.42828885
+    },
+    {
+      "label": "maize",
+      "polygons": 942,
+      "area_ha": 3889.1086317693002,
+      "water_m3": 22962871.62808473
+    },
+    {
+      "label": "orchard",
+      "polygons": 730,
+      "area_ha": 1907.7662585308972,
+      "water_m3": 8504215.219581619
+    },
+    {
+      "label": "melons",
+      "polygons": 65,
+      "area_ha": 278.1108149465275,
+      "water_m3": 999645.0035459785
+    },
+    {
+      "label": "vegetables",
+      "polygons": 15,
+      "area_ha": 45.753305930932406,
+      "water_m3": 538391.2970252163
+    }
+  ],
+  "zones": [
+    {
+      "label": "boz",
+      "polygons": 12993,
+      "area_ha": 60356.65935569306,
+      "water_m3": 315300998.9359001
+    },
+    {
+      "label": "chol",
+      "polygons": 238,
+      "area_ha": 1565.4648960634297,
+      "water_m3": 10403310.412460504
+    }
+  ],
+  "gmrs": [
+    {
+      "label": "III",
+      "polygons": 8004,
+      "area_ha": 35207.546659940635,
+      "water_m3": 194802682.28305405
+    },
+    {
+      "label": "V",
+      "polygons": 1968,
+      "area_ha": 11319.973103308355,
+      "water_m3": 50314100.94079224
+    },
+    {
+      "label": "VI",
+      "polygons": 1914,
+      "area_ha": 8924.989010367455,
+      "water_m3": 42457860.27210356
+    },
+    {
+      "label": "II",
+      "polygons": 705,
+      "area_ha": 3003.651319449748,
+      "water_m3": 17024521.22888633
+    },
+    {
+      "label": "I",
+      "polygons": 473,
+      "area_ha": 2308.6815836394017,
+      "water_m3": 13444811.117733117
+    },
+    {
+      "label": "IV",
+      "polygons": 149,
+      "area_ha": 1017.5930270285921,
+      "water_m3": 7201478.264686657
+    },
+    {
+      "label": "IX",
+      "polygons": 18,
+      "area_ha": 139.68954802234157,
+      "water_m3": 458855.24110495334
+    }
+  ]
+}

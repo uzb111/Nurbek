@@ -1,0 +1,93 @@
+{
+  "generated_at": "2026-07-20T11:24:17.604Z",
+  "district": {
+    "code": "1803",
+    "name": "Kasbi tumani",
+    "name_status": "working_label",
+    "center": {
+      "latitude": 38.86724,
+      "longitude": 65.41781
+    }
+  },
+  "period": {
+    "start_date": "2026-03-01",
+    "end_date": "2026-07-19",
+    "days": 141
+  },
+  "source_status": {
+    "weather": "Open-Meteo Historical Weather API",
+    "limit": "normative field demand proxy",
+    "supplied": "estimated as 88% of limit; editable in dashboard",
+    "used": "estimated as 82% of supplied; editable in dashboard",
+    "crop_coefficient": "estimated monthly Kc curve",
+    "groundwater": "estimated from GMR class"
+  },
+  "field_totals": {
+    "polygons": 12151,
+    "area_ha": 60820.77866581095,
+    "planned_water_m3": 317962406.6203705,
+    "unassigned_polygons_excluded": 1080,
+    "unassigned_area_ha_excluded": 1101.3455859454134
+  },
+  "weather": {
+    "et0_mm": 824.0600000000003,
+    "precipitation_mm": 133.2,
+    "effective_rain_coefficient": 0.8,
+    "effective_rain_m3": 64810621.74628815
+  },
+  "evapotranspiration": {
+    "potential_etc_m3": 355125747.17560166,
+    "groundwater_contribution_m3": 37599088.65878773,
+    "net_irrigation_demand_m3": 252716036.7705258
+  },
+  "editable_defaults": {
+    "limit_m3": 317962406.6203705,
+    "supplied_m3": 279806917.82592607,
+    "used_m3": 229441672.61725935
+  },
+  "crop_groups": [
+    {
+      "group": "cotton",
+      "area_ha": 21170.559239946208,
+      "etc_mm": 608.356,
+      "etc_m3": 128792367.3697675
+    },
+    {
+      "group": "winter_grain",
+      "area_ha": 24875.342497797246,
+      "etc_mm": 474.92099999999994,
+      "etc_m3": 118138225.34396349
+    },
+    {
+      "group": "alfalfa",
+      "area_ha": 8765.965843101802,
+      "etc_mm": 790.6300000000005,
+      "etc_m3": 69306355.7453157
+    },
+    {
+      "group": "maize",
+      "area_ha": 3829.0444298059497,
+      "etc_mm": 621.0179999999999,
+      "etc_m3": 23779055.13709229
+    },
+    {
+      "group": "orchard",
+      "area_ha": 1857.839133777994,
+      "etc_mm": 708.2240000000002,
+      "etc_m3": 13157662.626807868
+    },
+    {
+      "group": "melons",
+      "area_ha": 277.60900558487515,
+      "etc_mm": 585.8684999999999,
+      "etc_m3": 1626423.716885023
+    },
+    {
+      "group": "vegetables",
+      "area_ha": 44.418515796925114,
+      "etc_mm": 733.1565000000002,
+      "etc_m3": 325657.2357686834
+    }
+  ],
+  "open_meteo_url": "https://archive-api.open-meteo.com/v1/archive?latitude=38.86724&longitude=65.41781&start_date=2026-03-01&end_date=2026-07-19&daily=et0_fao_evapotranspiration,precipitation_sum&timezone=Asia%2FTashkent"
+}

@@ -4,7 +4,9 @@ const WEATHER_SNAPSHOT_URL = "../mvp_data/open_meteo_weather.json";
 const WEATHER_API_URL = "/api/open-meteo";
 const DISTRICT_BALANCE_URL = "../mvp_data/district_water_balance.json";
 const IRRIGATION_RULES_URL = "../mvp_data/config/irrigation_norms.csv";
-const MAP_FEATURE_LIMIT = 1800;
+// GitHub Pages publishes the complete static dataset. Render every available
+// polygon so the public map is a full field inventory, not a preview sample.
+const MAP_FEATURE_LIMIT = Number.POSITIVE_INFINITY;
 
 const STATUS_META = {
   demo_ready_observed: { label: "Manba asosidagi hisob", color: "#17663b", className: "ready" },
