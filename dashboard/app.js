@@ -49,7 +49,7 @@ let fullData = null;
 let selectedLayer = null;
 let selectedFeature = null;
 let mapPromise = null;
-let splitState = { active: false, parent: null, points: [], markers: [], line: null, layer: null, parts: [], scenarioId: null };
+let splitState = { active: false, parent: null, parentLayer: null, points: [], markers: [], line: null, layer: null, parts: [], scenarioId: null };
 let networkGroups = {};
 let waterRouteIndex = new Map();
 let fieldGeometryIndex = [];
@@ -355,13 +355,22 @@ function updateManualCropControls(properties = null) {
   select.value = properties.crop_group_mvp || "";
   button.disabled = false;
   splitButton.disabled = false;
-  label.textContent = `Dala ${String(properties.field_id || properties.feature_id).slice(0, 8)} · ${fmtDec.format(number(properties.maydoni))} ga`;
+  const selectionName = properties.split_status === "scenario" ? `Qism ${properties.split_part}` : `Dala ${String(properties.field_id || properties.feature_id).slice(0, 8)}`;
+  label.textContent = `${selectionName} · ${fmtDec.format(number(properties.maydoni))} ga`;
 }
 
 function assignCropToSelectedField() {
   if (!selectedFeature) return;
   const properties = selectedFeature.properties;
   const cropGroup = document.querySelector("#manual-crop-select").value;
+  if (properties.split_status === "scenario") {
+    properties.crop_group_mvp = cropGroup || null;
+    applySplitCropRule(selectedFeature);
+    renderSplitLayer();
+    const replacementLayer = splitLayerForField(properties.field_id);
+    if (replacementLayer) selectField(selectedFeature, replacementLayer);
+    return;
+  }
   if (cropGroup) manualCropAssignments[properties.field_id] = cropGroup;
   else delete manualCropAssignments[properties.field_id];
   saveManualCropAssignments();
@@ -503,21 +512,18 @@ function splitGmrOptions(selected) {
 function startSplitMode() {
   if (!selectedFeature || !map) return;
   if (!irrigationRules.length) {
-    document.querySelector("#split-panel").hidden = false;
-    document.querySelector("#split-message").textContent = "PNG sug‘orish qoidalari hali yuklanmoqda. Bir necha soniyadan keyin qayta urinib ko‘ring.";
+    document.querySelector("#map-hint").textContent = "PNG sug‘orish qoidalari yuklanmoqda — bir necha soniyadan keyin qayta urinib ko‘ring.";
     return;
   }
   cancelSplit(false);
   splitState.active = true;
   splitState.parent = selectedFeature;
+  splitState.parentLayer = selectedLayer;
   splitState.scenarioId = `split-${Date.now().toString(36)}`;
-  document.querySelector("#split-panel").hidden = false;
-  document.querySelector("#split-editors").hidden = true;
-  document.querySelector("#export-split").hidden = true;
-  document.querySelector("#split-message").textContent = "Birinchi nuqtani xaritada belgilang.";
+  document.querySelector("#split-panel").hidden = true;
+  document.querySelector("#map-hint").textContent = "Split rejimi: dala chegarasidan tashqarida birinchi nuqtani bosing.";
   map.getContainer().classList.add("split-cursor");
   map.on("click", onSplitMapClick);
-  document.querySelector(".split-tool")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 function onSplitMapClick(event) {
@@ -527,7 +533,7 @@ function onSplitMapClick(event) {
   const marker = L.circleMarker(event.latlng, { radius: 6, color: "#fff", weight: 2, fillColor: "#6556b3", fillOpacity: 1 }).addTo(map);
   splitState.markers.push(marker);
   if (splitState.points.length === 1) {
-    document.querySelector("#split-message").textContent = "Ikkinchi nuqtani belgilang — chiziq poligonni to‘liq kesib o‘tsin.";
+    document.querySelector("#map-hint").textContent = "Ikkinchi nuqtani bosing — kesish chizig‘i dalani to‘liq kesib o‘tsin.";
     return;
   }
   map.off("click", onSplitMapClick);
@@ -536,7 +542,7 @@ function onSplitMapClick(event) {
   try {
     createSplitParts();
   } catch (error) {
-    document.querySelector("#split-message").textContent = `Split amalga oshmadi: ${error.message}. Bekor qilib qayta chizing.`;
+    document.querySelector("#map-hint").textContent = `Split amalga oshmadi: ${error.message}. Qayta chizing.`;
     console.error(error);
   }
 }
@@ -585,10 +591,14 @@ function createSplitParts() {
   applySplitCropRule(splitState.parts[0]);
   applySplitCropRule(splitState.parts[1]);
   renderSplitLayer();
-  renderSplitEditors();
-  document.querySelector("#split-message").textContent = `Split tayyor: ${fmtDec.format(splitState.parts[0].properties.maydoni)} ga + ${fmtDec.format(splitState.parts[1].properties.maydoni)} ga = ${fmtDec.format(parentArea)} ga.`;
-  document.querySelector("#split-editors").hidden = false;
-  document.querySelector("#export-split").hidden = false;
+  for (const marker of splitState.markers) map.removeLayer(marker);
+  if (splitState.line) map.removeLayer(splitState.line);
+  splitState.markers = [];
+  splitState.line = null;
+  splitState.points = [];
+  document.querySelector("#map-hint").textContent = `Dala 2 qismga ajratildi: A ${fmtDec.format(splitState.parts[0].properties.maydoni)} ga, B ${fmtDec.format(splitState.parts[1].properties.maydoni)} ga. Qismni bosing va yuqoridan ekin tanlang.`;
+  const firstPartLayer = splitLayerForField(splitState.parts[0].properties.field_id);
+  if (firstPartLayer) selectField(splitState.parts[0], firstPartLayer);
 }
 
 function exactSplitRule(properties) {
@@ -639,6 +649,18 @@ function splitPartSummary(feature) {
   return { rule, water, area, etM3: water ? water.demandM3Ha * area : null, availableM3: water ? water.availableM3Ha * area : null, alternatives };
 }
 
+function splitLayerForField(fieldId) {
+  let match = null;
+  splitState.layer?.eachLayer((layer) => { if (layer.feature?.properties?.field_id === fieldId) match = layer; });
+  return match;
+}
+
+function restoreSplitPartStyle(layer) {
+  const feature = layer.feature;
+  const water = feature.properties.crop_group_mvp ? fieldWaterAnalysis(feature.properties) : null;
+  layer.setStyle({ color: feature.properties.split_part === "A" ? "#00e5ff" : "#ff4fd8", weight: 4, opacity: 1, fillColor: water ? WATER_STATUS_META[water.key].color : MAP_STATUS_COLORS.crop_required, fillOpacity: .82, dashArray: null });
+}
+
 function renderSplitLayer() {
   if (splitState.layer) map.removeLayer(splitState.layer);
   splitState.layer = L.geoJSON(turf.featureCollection(splitState.parts), {
@@ -649,7 +671,11 @@ function renderSplitLayer() {
     onEachFeature(feature, layer) { layer.bindTooltip(`Qism ${feature.properties.split_part} · ${fmtDec.format(feature.properties.maydoni)} ga · ${CROP_LABELS[feature.properties.crop_group_mvp] || "Ekin kiritilmagan"}`, { sticky: true }); },
   }).addTo(map);
   splitState.layer.bringToFront();
-  if (selectedLayer) selectedLayer.setStyle({ fillOpacity: .05, opacity: .35, dashArray: "5 5" });
+  splitState.layer.eachLayer((layer) => {
+    layer.__splitPartLayer = true;
+    layer.on("click", () => selectField(layer.feature, layer));
+  });
+  if (splitState.parentLayer) splitState.parentLayer.setStyle({ fillOpacity: 0, opacity: 0, weight: 0 });
 }
 
 function renderSplitEditors() {
@@ -703,9 +729,11 @@ function cancelSplit(hidePanel = true) {
   for (const marker of splitState.markers || []) map?.removeLayer(marker);
   if (splitState.line) map?.removeLayer(splitState.line);
   if (splitState.layer) map?.removeLayer(splitState.layer);
-  if (selectedLayer && geoLayer) { geoLayer.resetStyle(selectedLayer); selectedLayer.setStyle({ weight: 4, color: "#fff200", fillOpacity: .92 }); }
-  splitState = { active: false, parent: null, points: [], markers: [], line: null, layer: null, parts: [], scenarioId: null };
+  if (splitState.parentLayer && geoLayer) geoLayer.resetStyle(splitState.parentLayer);
+  if (selectedLayer && !selectedLayer.__splitPartLayer && geoLayer) selectedLayer.setStyle({ weight: 4, color: "#fff200", fillOpacity: .92 });
+  splitState = { active: false, parent: null, parentLayer: null, points: [], markers: [], line: null, layer: null, parts: [], scenarioId: null };
   if (hidePanel) document.querySelector("#split-panel").hidden = true;
+  document.querySelector("#map-hint").textContent = "Poligon ustiga bosing — dala pasporti ochiladi";
 }
 
 function renderConclusions() {
@@ -1139,9 +1167,13 @@ function selectField(feature, layer) {
   if (splitState.active) return;
   const nextId = feature.properties.field_id || feature.properties.feature_id;
   const splitParentId = splitState.parent?.properties?.field_id || splitState.parent?.properties?.feature_id;
-  if (splitState.parts.length && nextId !== splitParentId) cancelSplit();
+  const isSplitPart = feature.properties.split_status === "scenario";
+  if (splitState.parts.length && !isSplitPart && nextId !== splitParentId) cancelSplit();
   const p = feature.properties;
-  if (selectedLayer && selectedLayer !== layer) geoLayer.resetStyle(selectedLayer);
+  if (selectedLayer && selectedLayer !== layer) {
+    if (selectedLayer.__splitPartLayer) restoreSplitPartStyle(selectedLayer);
+    else if (selectedLayer !== splitState.parentLayer) geoLayer.resetStyle(selectedLayer);
+  }
   selectedLayer = layer;
   selectedFeature = feature;
   layer.setStyle({ weight: 4, color: "#fff200", fillOpacity: .92 });
