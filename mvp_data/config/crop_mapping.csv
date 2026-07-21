@@ -1,0 +1,15 @@
+source_crop,crop_group,mapping_status
+Beda,alfalfa,mapped
+Bog',orchard,mapped
+Bug'doy,winter_grain,mapped
+Kartoshka,vegetables,mapped
+Makkajo'xori,maize,mapped
+Paxta,cotton,mapped
+Piyoz,vegetables,mapped
+Qovun,melons,mapped
+Sabzi,vegetables,mapped
+Aralash ekin,,requires_rule
+Mosh,,requires_rule
+Kungaboqar,,requires_rule
+Tariq,,requires_rule
+Vegitatsiyasiz,,requires_rule

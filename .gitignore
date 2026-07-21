@@ -1,0 +1,34 @@
+# Python runtime files
+__pycache__/
+*.py[cod]
+
+# Original and generated GIS data are intentionally not published.
+# The GitHub repository is public; store these in a private data repository
+# or approved object storage instead.
+Smart_agriculture.gdb/
+mvp_data_partial_*/
+mvp_data/Smart_agriculture_mvp.gdb/
+mvp_data/geojson/
+mvp_data/*.json
+mvp_data/*.csv
+mvp_data/config/field_zone_review_*.csv
+
+# Keep only the non-sensitive configuration and methodology needed to explain
+# the pipeline.
+!mvp_data/README.md
+!mvp_data/DEMO_PROXY.md
+!mvp_data/IRRIGATION_MVP.md
+!mvp_data/config/
+!mvp_data/config/irrigation_norms.csv
+!mvp_data/config/crop_mapping.csv
+
+# Local design references and source images
+design_concepts/
+image (*.png
+
+# Editor and operating system files
+.vscode/
+.idea/
+*.log
+.DS_Store
+Thumbs.db

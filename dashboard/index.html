@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="uz">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AgroTahlil — Yer va suv tahlili</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2317663b'/%3E%3Cpath d='M16 42C26 39 37 29 45 15c3 19-7 31-23 34M18 47c7-11 14-17 24-23' fill='none' stroke='%23fff' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Asosiy menyu">
+        <div class="brand"><span class="brand-mark">A</span><span>Agro<span>Tahlil</span></span></div>
+        <nav class="nav-list">
+          <button class="nav-item active" data-view="dashboard"><span>▦</span> Umumiy dashboard</button>
+          <button class="nav-item" data-view="water-balance"><span>≈</span> Tuman suv balansi</button>
+          <button class="nav-item" data-view="map"><span>◇</span> Dalalar xaritasi</button>
+        </nav>
+        <div class="sidebar-note">
+          <span class="eyebrow">TAHLIL TIZIMI</span>
+          <p>Yer, ekin, suv normasi va ob-havo ma’lumotlari asosida.</p>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">SMART AGRICULTURE / QASHQADARYO</p>
+            <h1 id="page-title">Umumiy tahlil dashboardi</h1>
+            <p class="page-subtitle" id="page-subtitle">Hudud, ekinlar, suv talabi, ob-havo va avtomatik xulosalar</p>
+          </div>
+          <div class="topbar-actions">
+            <span class="data-badge" id="data-status">Ma’lumot yuklanmoqda…</span>
+            <button class="icon-button" id="reset-view" title="Xarita ko‘rinishini tiklash" hidden>⌖</button>
+          </div>
+        </header>
+
+        <section class="view-panel" id="dashboard-view">
+          <section class="kpi-grid" aria-label="Asosiy ko‘rsatkichlar">
+            <article class="kpi-card"><div class="kpi-icon green">▦</div><div><span class="kpi-label">Tahlil qamrovi</span><strong id="kpi-features">—</strong><small id="kpi-fields">— dala</small></div></article>
+            <article class="kpi-card"><div class="kpi-icon earth">◫</div><div><span class="kpi-label">Umumiy maydon</span><strong id="kpi-area">—</strong><small>gektar</small></div></article>
+            <article class="kpi-card"><div class="kpi-icon blue">◒</div><div><span class="kpi-label">Mavsumiy suv rejasi</span><strong id="kpi-water">—</strong><small id="kpi-norm">— m³/ga o‘rtacha</small></div></article>
+            <article class="kpi-card"><div class="kpi-icon amber">!</div><div><span class="kpi-label">Tasdiqlash talab etiladi</span><strong id="kpi-review">—</strong><small>taxminiy hisoblangan poligon</small></div></article>
+          </section>
+
+          <section class="analytics-grid">
+            <article class="card chart-card chart-wide">
+              <div class="card-heading"><div><span class="eyebrow">SUV TALABI</span><h2>Ekinlar kesimida</h2></div><span class="chart-unit">mln m³</span></div>
+              <div class="bar-list" id="crop-bars"></div>
+            </article>
+            <article class="card chart-card">
+              <div class="card-heading"><div><span class="eyebrow">MA’LUMOT ISHONCHLILIGI</span><h2>Hisob manbasi</h2></div></div>
+              <div class="donut-layout"><div class="donut" id="quality-donut"><strong id="quality-percent">—</strong><small>manba asosida</small></div><div class="legend-list" id="quality-legend"></div></div>
+            </article>
+            <article class="card chart-card">
+              <div class="card-heading"><div><span class="eyebrow">SUG‘ORISH ZONASI</span><h2>Bo‘z va cho‘l hududi</h2></div></div>
+              <div class="simple-bars" id="zone-bars"></div>
+            </article>
+          </section>
+
+          <section class="weather-card card" id="weather">
+            <div class="weather-heading">
+              <div><span class="eyebrow">JONLI OB-HAVO / OPEN-METEO</span><h2>Hududiy ob-havo konteksti</h2><p>Qashqadaryo dala qamrovining markaziy nuqtasi: 38.86724, 65.41781</p></div>
+              <span class="weather-source" id="weather-source">Ma’lumot yuklanmoqda…</span>
+            </div>
+            <div class="weather-metrics">
+              <div><span>Hozirgi harorat</span><strong id="weather-temp">—</strong><small id="weather-observed-at">—</small></div>
+              <div><span>Yog‘in, 7 kun</span><strong id="weather-rain">—</strong><small>Open-Meteo prognozi</small></div>
+              <div><span>ET0, 7 kun</span><strong id="weather-et0">—</strong><small>FAO-56 reference ET0</small></div>
+              <div><span>Iqlim defitsiti</span><strong id="weather-deficit">—</strong><small>ET0 − yog‘in</small></div>
+              <div><span>Tuproq namligi</span><strong id="weather-soil">—</strong><small>3–9 sm model bahosi</small></div>
+              <div><span>Shamol</span><strong id="weather-wind">—</strong><small>10 m balandlikda</small></div>
+            </div>
+            <p class="weather-disclaimer">Ob-havo Open-Meteo API’dan olinadi. Suv normasi, ekin koeffitsiyenti va sizot suvi ta’siri hisoblangan yoki taxminiy qiymat sifatida alohida ko‘rsatiladi.</p>
+          </section>
+
+          <section class="analytics-grid lower-grid">
+            <article class="card chart-card">
+              <div class="card-heading"><div><span class="eyebrow">GMR TUZILMASI</span><h2>Guruhlar bo‘yicha suv</h2></div></div>
+              <div class="simple-bars" id="gmr-bars"></div>
+            </article>
+            <article class="card chart-card chart-wide">
+              <div class="card-heading"><div><span class="eyebrow">HISOB TARKIBI</span><h2>Manba va taxminiy suv hajmi</h2></div></div>
+              <div class="composition" id="water-composition"></div>
+            </article>
+          </section>
+
+          <section class="card conclusions-card">
+            <div class="card-heading conclusions-heading"><div><span class="eyebrow">AVTOMATIK TAHLIL</span><h2>Formula asosidagi 20 ta asosiy xulosa</h2><p>Har bir xulosada ishlatilgan hisob yoki tekshiruv qoidasi ko‘rsatilgan.</p></div><span class="conclusion-count">20 xulosa</span></div>
+            <div class="conclusion-grid" id="conclusion-grid"></div>
+          </section>
+        </section>
+
+        <section class="view-panel" id="water-balance-view" hidden>
+          <section class="balance-hero card">
+            <div>
+              <span class="eyebrow">TUMAN MIQYOSIDAGI SUV HISOBI</span>
+              <h2 id="balance-district">Kasbi tumani</h2>
+              <p id="balance-period">Davr yuklanmoqda…</p>
+            </div>
+            <div class="balance-badges"><span>Open-Meteo ET</span><span class="estimated">Limit va sarf — taxminiy</span></div>
+          </section>
+
+          <section class="balance-input-card card">
+            <div class="card-heading"><div><span class="eyebrow">KIRISH QIYMATLARI</span><h2>Limit va amaldagi suvni kiriting</h2><p>Rasmiy raqam kelganda qiymatni o‘zgartiring — barcha xulosalar avtomatik yangilanadi.</p></div></div>
+            <div class="balance-inputs">
+              <label><span>Umumiy suv limiti</span><input id="input-water-limit" type="number" min="0" step="0.1" /><small>mln m³ · hozir normativ talab asosida</small></label>
+              <label><span>Amalda berilgan suv</span><input id="input-water-supplied" type="number" min="0" step="0.1" /><small>mln m³ · hozir limitning 88% taxmini</small></label>
+              <label><span>Dalalarda ishlatilgan suv</span><input id="input-water-used" type="number" min="0" step="0.1" /><small>mln m³ · hozir berilgan suvning 82% taxmini</small></label>
+              <button id="balance-reset" class="balance-reset" type="button">Boshlang‘ich qiymatni tiklash</button>
+            </div>
+          </section>
+
+          <section class="kpi-grid balance-kpis">
+            <article class="kpi-card"><div class="kpi-icon blue">L</div><div><span class="kpi-label">Umumiy limit</span><strong id="balance-limit">—</strong><small>mln m³</small></div></article>
+            <article class="kpi-card"><div class="kpi-icon earth">B</div><div><span class="kpi-label">Amalda berilgan</span><strong id="balance-supplied">—</strong><small id="balance-supply-share">—</small></div></article>
+            <article class="kpi-card"><div class="kpi-icon green">I</div><div><span class="kpi-label">Dalalarda ishlatilgan</span><strong id="balance-used">—</strong><small id="balance-use-share">—</small></div></article>
+            <article class="kpi-card"><div class="kpi-icon amber">ET</div><div><span class="kpi-label">ET bo‘yicha sarflangan</span><strong id="balance-actual-et">—</strong><small>ekin va tuproq evapotranspiratsiyasi</small></div></article>
+          </section>
+
+          <section class="balance-grid">
+            <article class="card balance-chart-card">
+              <div class="card-heading"><div><span class="eyebrow">SUV OQIMI</span><h2>Limitdan evapotranspiratsiyagacha</h2></div><span class="chart-unit">mln m³</span></div>
+              <div class="balance-flow" id="balance-flow"></div>
+            </article>
+            <article class="card balance-chart-card">
+              <div class="card-heading"><div><span class="eyebrow">TABIIY MANBALAR VA YO‘QOTISH</span><h2>Suv balansi tarkibi</h2></div></div>
+              <div class="balance-facts">
+                <div><span>Tarmoq va dala yo‘qotishi</span><strong id="balance-loss">—</strong><small>berilgan − ishlatilgan</small></div>
+                <div><span>Samarali yog‘in</span><strong id="balance-rain">—</strong><small>Open-Meteo yog‘in × 80%</small></div>
+                <div><span>Sizot suvi hissasi</span><strong id="balance-groundwater">—</strong><small>GMR bo‘yicha taxmin</small></div>
+                <div><span>Suv defitsiti</span><strong id="balance-deficit">—</strong><small>ET talabi − mavjud suv</small></div>
+              </div>
+            </article>
+          </section>
+
+          <section class="balance-grid balance-lower">
+            <article class="card balance-chart-card">
+              <div class="card-heading"><div><span class="eyebrow">EKINLAR ET HISOBI</span><h2>Bug‘lanish va transpiratsiya</h2></div></div>
+              <div class="simple-bars" id="balance-crop-et"></div>
+            </article>
+            <article class="card balance-formula-card">
+              <span class="eyebrow">HISOBLASH MANTIG‘I</span>
+              <h2 id="balance-conclusion">—</h2>
+              <div class="balance-equation" id="balance-equation">—</div>
+              <ul>
+                <li>ET0 va yog‘in — Open-Meteo tarixiy ma’lumoti.</li>
+                <li>Kc — ekin va oy bo‘yicha taxminiy koeffitsiyent.</li>
+                <li>Sizot hissasi — GMR guruhi bo‘yicha taxmin.</li>
+                <li>Limit, berilgan va ishlatilgan suv rasmiy ma’lumot bilan almashtiriladi.</li>
+              </ul>
+              <p class="balance-warning" id="balance-excluded">—</p>
+            </article>
+          </section>
+        </section>
+
+        <section class="view-panel" id="map-view" hidden>
+          <section class="workspace">
+            <div class="map-card card">
+              <div class="card-heading">
+                <div><span class="eyebrow">INTERAKTIV XARITA</span><h2>Dalalar holati</h2></div>
+                <div class="legend" id="map-legend"><span><i class="legend-dot water-good"></i> Yetarli</span><span><i class="legend-dot water-limited"></i> Cheklangan</span><span><i class="legend-dot water-short"></i> Tanqis</span><span><i class="legend-dot water-severe"></i> Jiddiy tanqis</span></div>
+              </div>
+              <div class="map-toolbar">
+                <label class="search-field"><span>⌕</span><input id="field-search" type="search" placeholder="field_id yoki ekin bo‘yicha qidiring" /></label>
+                <select id="crop-filter" aria-label="Ekin filtri"><option value="all">Barcha ekinlar</option></select>
+                <select id="status-filter" aria-label="Hisob holati filtri"><option value="all">Barcha holatlar</option><option value="demo_ready_observed">Manba asosidagi hisob</option><option value="demo_ready_proxy">Taxminiy hisob</option></select>
+                <select id="zone-filter" aria-label="Sug‘orish zonasi filtri"><option value="all">Barcha zonalar</option><option value="boz">Bo‘z zona</option><option value="chol">Cho‘l zonasi</option></select>
+                <select id="gmr-filter" aria-label="GMR filtri"><option value="all">Barcha GMR</option></select>
+                <select id="area-filter" aria-label="Maydon filtri"><option value="all">Barcha maydonlar</option><option value="under1">1 ga gacha</option><option value="1to5">1–5 ga</option><option value="5to20">5–20 ga</option><option value="over20">20 ga va katta</option></select>
+                <select id="confidence-filter" aria-label="Ishonchlilik filtri"><option value="all">Barcha ishonchlilik</option><option value="high">Yuqori: 80–100%</option><option value="medium">O‘rta: 50–79%</option><option value="low">Past: 0–49%</option></select>
+                <select id="water-filter" aria-label="Suv holati filtri"><option value="all">Barcha suv holatlari</option><option value="sufficient">Suv yetarli</option><option value="limited">Suv cheklangan</option><option value="shortage">Suv tanqis</option><option value="severe">Jiddiy tanqis</option></select>
+                <select id="map-metric" aria-label="Xarita ranglash usuli"><option value="water">Rang: suv holati</option><option value="source">Rang: ma’lumot manbasi</option></select>
+                <button class="filter-reset" id="filter-reset" type="button">Filtrlarni tozalash</button>
+              </div>
+              <div class="map-wrap"><div id="map"></div><div class="map-loading" id="map-loading"><div class="spinner"></div><p>Dala geometriyasi yuklanmoqda…</p></div><div class="map-hint" id="map-hint">Poligon ustiga bosing — dala pasporti ochiladi</div></div>
+            </div>
+
+            <aside class="detail-panel card" aria-live="polite">
+              <div class="card-heading compact"><div><span class="eyebrow">DALA PASPORTI</span><h2 id="field-title">Dalani tanlang</h2></div><span class="status-pill neutral" id="field-status">Kutilmoqda</span></div>
+              <div class="empty-state" id="field-empty"><div class="empty-icon">◇</div><h3>Xaritadan poligon tanlang</h3><p>Ekin, GMR, sug‘orish normasi, formula va dala xulosasi shu yerda ko‘rinadi.</p></div>
+              <div id="field-details" hidden>
+                <div class="field-score-row"><div class="confidence-ring" id="confidence-ring"><span id="field-confidence">—</span><small>%</small></div><div><span class="field-meta-label">ZONA ISHONCHLILIGI</span><strong id="field-zone">—</strong><p id="field-zone-note">—</p></div></div>
+                <dl class="facts-grid"><div><dt>Ekin</dt><dd id="field-crop">—</dd></div><div><dt>Maydon</dt><dd id="field-area">—</dd></div><div><dt>GMR</dt><dd id="field-gmr">—</dd></div><div><dt>Tuproq boniteti</dt><dd id="field-bonitet">—</dd></div></dl>
+                <section class="water-plan"><div class="section-label-row"><span class="eyebrow">MAVSUMIY SUV REJASI</span><span id="field-norm-status" class="mini-status">—</span></div><strong class="water-total" id="field-water">—</strong><span class="water-unit">m³ mavsum uchun</span><div class="water-breakdown"><div><span>Norma</span><strong id="field-norm">—</strong></div><div><span>Sug‘orishlar</span><strong id="field-count">—</strong></div><div><span>Muddat</span><strong id="field-window">—</strong></div></div><code class="formula-line" id="field-season-formula">—</code></section>
+                <section class="field-analysis"><span class="eyebrow">7 KUNLIK TAHLILIY BAHO</span><div class="field-analysis-value"><strong id="field-seven-day-water">—</strong><span>m³</span></div><code class="formula-line" id="field-weather-formula">—</code><p id="field-conclusion">—</p></section>
+                <section class="field-water-status">
+                  <div class="section-label-row"><span class="eyebrow">DALA SUV HOLATI</span><span class="water-state" id="field-water-state">—</span></div>
+                  <div class="water-coverage"><strong id="field-water-coverage">—</strong><span>hisobiy ta’minlanganlik</span></div>
+                  <div class="water-status-bar"><div id="field-water-bar"></div></div>
+                  <p id="field-water-reason">—</p>
+                </section>
+                <section class="soil-weather-card">
+                  <span class="eyebrow">TUPROQ VA OB-HAVO TA’SIRI</span>
+                  <div class="soil-score-row"><strong id="field-soil-score">—</strong><div><span id="field-soil-state">—</span><small id="field-texture">—</small></div></div>
+                  <p id="field-soil-note">—</p>
+                </section>
+                <section class="crop-recommendation">
+                  <span class="eyebrow">EKIN TAVSIYASI</span>
+                  <h3>Ushbu dala uchun mos variantlar</h3>
+                  <div class="recommendation-list" id="field-crop-recommendations"><p>Hisoblanmoqda…</p></div>
+                  <code class="formula-line">Moslik = 45% suv + 30% bonitet + 15% mexanik tarkib + 10% ob-havo</code>
+                  <p class="recommendation-warning">Bu dastlabki agrotexnik saralash. Yakuniy ekin tanlovi sho‘rlanish, laboratoriya tahlili, bozor va agronom xulosasi bilan tasdiqlanadi.</p>
+                </section>
+                <section class="data-note"><span class="note-icon">i</span><p id="field-note">—</p></section>
+                <section class="split-tool">
+                  <div class="section-label-row"><div><span class="eyebrow">DALA SPLIT SSENARIYSI</span><h3>Dalani mustaqil qismlarga ajratish</h3></div><button class="split-primary" id="start-split" type="button">Split boshlash</button></div>
+                  <p class="split-intro">Xaritada kesish chizig‘ining ikki nuqtasini belgilang. Har yangi qism alohida ID, ekin va suv hisobiga ega bo‘ladi.</p>
+                  <div class="split-panel" id="split-panel" hidden>
+                    <div class="split-message" id="split-message">Birinchi nuqtani xaritada belgilang.</div>
+                    <div class="split-editors" id="split-editors" hidden></div>
+                    <div class="split-actions"><button id="export-split" type="button" hidden>GeoJSON yuklab olish</button><button id="cancel-split" type="button">Bekor qilish</button></div>
+                  </div>
+                </section>
+              </div>
+            </aside>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
