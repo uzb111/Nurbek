@@ -825,16 +825,22 @@ async function loadNetworkOverlay(networkType) {
     const data = await response.json();
     L.geoJSON(data, {
       pane: "networkPane",
+      interactive: false,
+      renderer: L.svg({ padding: .5, pane: "networkPane" }),
+      style: { color: config.color, weight: config.weight, opacity: .92 },
+    }).addTo(group);
+    L.geoJSON(data, {
+      pane: "networkHitPane",
       interactive: true,
       bubblingMouseEvents: false,
-      renderer: L.canvas({ padding: .5, pane: "networkPane", tolerance: 10 }),
-      style: { color: config.color, weight: config.weight, opacity: .92 },
+      renderer: L.svg({ padding: .5, pane: "networkHitPane" }),
+      style: { color: "#000", weight: 18, opacity: .001, lineCap: "round", lineJoin: "round" },
       onEachFeature(feature, layer) {
-        layer._networkBaseStyle = { color: config.color, weight: config.weight, opacity: .92 };
+        layer._networkBaseStyle = { color: "#000", weight: 18, opacity: .001 };
         layer.bindPopup(networkPopupHtml(networkType, feature.properties || {}, null, null, true), { maxWidth: 390, minWidth: 330 });
         layer.bindTooltip(networkType === "kanal" ? text(feature.properties?.kanal_nomi, "Kanal") : text(feature.properties?.kollektor_, "Zovur"), { sticky: true });
         layer.on("mouseover", () => {
-          if (selectedNetworkLayer !== layer) layer.setStyle({ color: "#fff200", weight: config.weight + 2, opacity: 1 });
+          if (selectedNetworkLayer !== layer) layer.setStyle({ color: "#fff200", weight: 7, opacity: .95 });
         });
         layer.on("mouseout", () => {
           if (selectedNetworkLayer !== layer) layer.setStyle(layer._networkBaseStyle);
@@ -843,7 +849,7 @@ async function loadNetworkOverlay(networkType) {
           if (event.originalEvent) L.DomEvent.stopPropagation(event.originalEvent);
           if (selectedNetworkLayer && selectedNetworkLayer !== layer) selectedNetworkLayer.setStyle(selectedNetworkLayer._networkBaseStyle);
           selectedNetworkLayer = layer;
-          layer.setStyle({ color: "#fff200", weight: Math.max(config.weight + 3, 5), opacity: 1 });
+          layer.setStyle({ color: "#fff200", weight: 7, opacity: 1 });
           layer.setPopupContent(networkPopupHtml(networkType, feature.properties || {}, null, null, true));
           setTimeout(() => {
             const routeStats = networkType === "kanal" ? canalRouteStats(feature.properties || {}) : null;
@@ -1104,7 +1110,10 @@ function initMapPage() {
     L.control.zoom({ position: "bottomright" }).addTo(map);
     const networkPane = map.createPane("networkPane");
     networkPane.style.zIndex = "620";
-    networkPane.style.pointerEvents = "auto";
+    networkPane.style.pointerEvents = "none";
+    const networkHitPane = map.createPane("networkHitPane");
+    networkHitPane.style.zIndex = "630";
+    networkHitPane.style.pointerEvents = "auto";
     const imagery = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "Tiles © Esri, Maxar, Earthstar Geographics and the GIS User Community" });
     const street = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap contributors" });
     imagery.addTo(map);
