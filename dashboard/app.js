@@ -91,7 +91,7 @@ function renderWeather(payload, sourceLabel, fallback = false) {
   source.textContent = sourceLabel;
   source.classList.toggle("offline", fallback);
   renderConclusions();
-  if (selectedFeature) renderFieldDecision(selectedFeature.properties);
+  if (selectedFeature) { renderFieldDecision(selectedFeature.properties); renderRouteReport(selectedFeature.properties); }
 }
 
 async function loadWeather() {
@@ -715,6 +715,55 @@ function renderMapView(features) {
   document.querySelector("#data-status").textContent = `${fmtInt.format(fullData.features.length)} poligon · xaritada ${fmtInt.format(visible.length)}`;
 }
 
+function waterRouteParts(properties) {
+  return String(properties.water_route || "").split("→").map((item) => item.trim()).filter(Boolean);
+}
+
+function routeStartsWith(candidate, prefix) {
+  return prefix.every((value, index) => candidate[index] === value);
+}
+
+function routeChartSvg(steps) {
+  const width = 900, height = 210, left = 44, right = 18, top = 18, bottom = 35;
+  const chartWidth = width - left - right, chartHeight = height - top - bottom;
+  const maximum = Math.max(...steps.flatMap((step) => [step.need, step.delivery]), 1);
+  const x = (index) => left + (steps.length === 1 ? chartWidth / 2 : index * chartWidth / (steps.length - 1));
+  const y = (value) => top + chartHeight - value / maximum * chartHeight;
+  const line = (key) => steps.map((step, index) => `${x(index)},${y(step[key])}`).join(" ");
+  const grids = [0, .25, .5, .75, 1].map((ratio) => `<line x1="${left}" y1="${top + chartHeight * ratio}" x2="${width - right}" y2="${top + chartHeight * ratio}" stroke="#dfe9e2" stroke-width="1"/><text x="${left - 7}" y="${top + chartHeight * ratio + 3}" text-anchor="end" fill="#718076" font-size="9">${fmtDec.format(maximum * (1 - ratio) / 1e6)}</text>`).join("");
+  const dots = (key, color) => steps.map((step, index) => `<circle cx="${x(index)}" cy="${y(step[key])}" r="4" fill="${color}"/><text x="${x(index)}" y="${height - 15}" text-anchor="middle" fill="#68776d" font-size="9">${index + 1}-quloq</text>`).join("");
+  return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Suv yo‘li bo‘yicha talab va yetib keluvchi suv chizig‘i">${grids}<polyline points="${line("need")}" fill="none" stroke="#d88917" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><polyline points="${line("delivery")}" fill="none" stroke="#1575bd" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${dots("need", "#d88917")}${dots("delivery", "#1575bd")}</svg>`;
+}
+
+function renderRouteReport(properties) {
+  const route = waterRouteParts(properties);
+  const empty = document.querySelector("#route-report-empty");
+  const data = document.querySelector("#route-report-data");
+  if (!fullData || !route.length || properties.delivery_calc_status !== "scenario_ready") {
+    empty.hidden = false; data.hidden = true;
+    document.querySelector("#route-report-title").textContent = "Suv yo‘li aniqlanmagan";
+    return;
+  }
+  const steps = route.map((name, index) => {
+    const prefix = route.slice(0, index + 1);
+    const matches = fullData.features.filter((feature) => routeStartsWith(waterRouteParts(feature.properties), prefix));
+    const uniqueFields = new Set(matches.map((feature) => feature.properties.field_id || feature.properties.plan_part_id));
+    const terminalBlocks = new Set(matches.map((feature) => feature.properties.water_block_id).filter(Boolean));
+    return {
+      name, index: index + 1, polygons: matches.length, fields: uniqueFields.size, blocks: terminalBlocks.size,
+      need: sum(matches, (feature) => feature.properties.seasonal_need_m3),
+      delivery: sum(matches, (feature) => deliveryScenario(feature.properties)?.delivery || feature.properties.delivery_est_m3),
+    };
+  });
+  const selected = steps[steps.length - 1];
+  empty.hidden = true; data.hidden = false;
+  document.querySelector("#route-report-title").textContent = `${selected.index}-quloq: ${selected.name}`;
+  document.querySelector("#route-report-subtitle").textContent = `${route[0]} dan tanlangan dala qulog‘igacha ${selected.index} bosqichli yo‘l.`;
+  document.querySelector("#route-metrics").innerHTML = `<div><span>Tanlangan quloq</span><strong>${selected.index}-bosqich</strong><small>${escapeHtml(String(properties.water_block_id || selected.name))}</small></div><div><span>Shu quloqdagi dala</span><strong>${fmtInt.format(selected.fields)}</strong><small>${fmtInt.format(selected.polygons)} poligon</small></div><div><span>Quloqlar soni</span><strong>${fmtInt.format(selected.blocks)}</strong><small>yakuniy bloklar</small></div><div><span>Hisobiy yetib kelish</span><strong>${balanceMillions(selected.delivery)}</strong><small>mln m³</small></div>`;
+  document.querySelector("#route-chart").innerHTML = routeChartSvg(steps);
+  document.querySelector("#route-table-body").innerHTML = steps.map((step) => `<tr><td>${step.index}. ${escapeHtml(step.name)}</td><td>${fmtInt.format(step.fields)}<small> · ${fmtInt.format(step.polygons)} poligon</small></td><td>${fmtInt.format(step.blocks)}</td><td>${balanceMillions(step.need)} mln m³</td><td>${balanceMillions(step.delivery)} mln m³</td></tr>`).join("");
+}
+
 function sourceLabel(value) { return value === "observed" ? "manba" : "yaqin dala taxmini"; }
 
 function fieldWeatherCalculation(properties) {
@@ -783,6 +832,7 @@ function selectField(feature, layer) {
   }
   document.querySelector("#field-note").textContent = p.demo_norm_status === "demo_ready_observed" ? "Ekin, GMR va zona manba ma’lumotidan olingan. Mavsumiy ko‘rsatkich normativ hisob, amaldagi sarf emas." : `Ekin — ${sourceLabel(p.crop_mvp_source)}; GMR — ${sourceLabel(p.gmr_mvp_source)}; zona — taxminiy. Real dala ma’lumoti bilan tasdiqlash talab etiladi.`;
   renderFieldDecision(p);
+  renderRouteReport(p);
 }
 
 function populateCropFilter(features) {
