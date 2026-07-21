@@ -162,7 +162,8 @@
 
         <section class="view-panel" id="map-view" hidden>
           <section class="workspace">
-            <div class="map-card card">
+            <div class="map-column">
+              <div class="map-card card">
               <div class="card-heading">
                 <div><span class="eyebrow">INTERAKTIV XARITA</span><h2>Dalalar holati</h2></div>
                 <div class="legend" id="map-legend"><span><i class="legend-dot water-good"></i> Yetarli</span><span><i class="legend-dot water-limited"></i> Cheklangan</span><span><i class="legend-dot water-short"></i> Tanqis</span><span><i class="legend-dot water-severe"></i> Jiddiy tanqis</span></div>
@@ -180,19 +181,19 @@
                 <button class="filter-reset" id="filter-reset" type="button">Filtrlarni tozalash</button>
               </div>
               <div class="map-wrap"><div id="map"></div><div class="map-loading" id="map-loading"><div class="spinner"></div><p>Dala geometriyasi yuklanmoqda…</p></div><div class="map-hint" id="map-hint">Poligon ustiga bosing — dala pasporti ochiladi</div></div>
-            </div>
-
-            <section class="route-report card" id="route-report">
-              <div class="card-heading compact"><div><span class="eyebrow">SUV YO‘LI HISOBOTI</span><h2 id="route-report-title">Poligonni tanlang</h2><p id="route-report-subtitle">Bosh kanal, quloqlar va shu yo‘ldagi dalalar hisoboti bu yerda chiqadi.</p></div></div>
-              <div class="route-report-empty" id="route-report-empty">Xaritadan poligon tanlang — uning qaysi quloqdan suv olishi hamda yo‘l kesimidagi dala va suv hajmlari ko‘rsatiladi.</div>
-              <div id="route-report-data" hidden>
-                <div class="route-metrics" id="route-metrics"></div>
-                <div class="route-chart-legend"><span><i class="need-line"></i> Normativ talab</span><span><i class="delivery-line"></i> Ssenariy bo‘yicha dala kirishidagi suv</span></div>
-                <div class="route-chart" id="route-chart"></div>
-                <div class="route-table-wrap"><table class="route-table"><thead><tr><th>Bosqich / quloq</th><th>Dala</th><th>Quloq</th><th>Talab</th><th>Yetib kelishi</th></tr></thead><tbody id="route-table-body"></tbody></table></div>
-                <p class="route-disclaimer">Bu hisobot suv yo‘li ierarxiyasi va 1,5%/bosqich ssenariy yo‘qotishiga asoslanadi. Dalalarning haqiqiy sug‘orish navbati o‘lchov/jurnal bilan tasdiqlanmaguncha “oldin suv olgan dala” deb qat’iy xulosa qilinmaydi.</p>
               </div>
-            </section>
+
+              <section class="route-report card" id="route-report">
+                <div class="card-heading compact"><div><span class="eyebrow">SUV YO‘LI LINE CHART</span><h2 id="route-report-title">Poligonni tanlang</h2><p id="route-report-subtitle">Bosh kanaldan tanlangan quloqqacha poligon, quloq va suv hajmi.</p></div></div>
+                <div class="route-report-empty" id="route-report-empty">Xaritadan poligon tanlang — line chart shu yerda ochiladi.</div>
+                <div id="route-report-data" hidden>
+                  <div class="route-metrics" id="route-metrics"></div>
+                  <div class="route-chart-legend"><span><i class="polygon-line"></i> Poligonlar</span><span><i class="outlet-line"></i> Quloqlar</span><span><i class="delivery-line"></i> Suv hajmi</span></div>
+                  <div class="route-chart" id="route-chart"></div>
+                  <p class="route-disclaimer">Chiziqlar bosh kanaldan tanlangan quloqqacha har bir bosqichdagi holatni ko‘rsatadi. Suv hajmi 1,5%/bosqich ssenariy yo‘qotishi asosida hisoblangan.</p>
+                </div>
+              </section>
+            </div>
 
             <aside class="detail-panel card" aria-live="polite">
               <div class="card-heading compact"><div><span class="eyebrow">DALA PASPORTI</span><h2 id="field-title">Dalani tanlang</h2></div><span class="status-pill neutral" id="field-status">Kutilmoqda</span></div>
