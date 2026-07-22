@@ -85,3 +85,7 @@ Umumiy tahlil ochilganda optimal ekin joylashtirish birinchi analitik blokda
 ko‘rinadi. Suv balansi kengaytirilgan tuman tahliliga ko‘chirilgan. FileGDBdagi
 Tm raqamli domen kodlari hisobda saqlanadi, ammo popup, dala pasporti va split
 oynasida foydalanuvchiga faqat tushunarli mexanik tarkib nomlari chiqariladi.
+
+Ekin tavsiyasi tuman bo‘yicha yagona umumiy joylashtirish natijasidir. Shu sabab
+dala pasportidagi takroriy uchta muqobil ekin kartasi chiqarilmaydi; dala paneli
+faqat amalda tanlangan ekin va unga tegishli tuproq, suv hamda ET hisobini beradi.

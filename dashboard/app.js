@@ -1070,8 +1070,6 @@ function renderFieldDecision(properties) {
   const weather = currentWeather ? weatherStats(currentWeather) : null;
   document.querySelector("#field-soil-note").textContent = `Ob-havo bonitet ballini qisqa muddatda o‘zgartirmaydi. Ammo ${weather ? `${fmtDec.format(weather.maxTemperature)}°C gacha issiqlik, ` : ""}suv tanqisligi, sho‘rlanish yoki sizotning ko‘tarilishi hosildorlikni pasaytirishi va uzoq muddatda tuproq holatiga ta’sir qilishi mumkin.`;
 
-  const recommendations = cropRecommendations(properties);
-  document.querySelector("#field-crop-recommendations").innerHTML = recommendations.length ? recommendations.map((item, index) => `<div class="recommendation-item"><span class="recommendation-rank">${index + 1}</span><div><strong>${item.name}</strong><small>Norma ${fmtInt.format(item.norm)} m³/ga · bonitet talabi ≥${item.minBonitet}</small><div class="recommendation-factors"><span>Suv ${fmtInt.format(item.waterScore)}</span><span>Bonitet ${fmtInt.format(item.soilScore)}</span><span>Tm ${fmtInt.format(item.mechanicalScore)}</span><span>Ob-havo ${fmtInt.format(item.climateScore)}</span></div><code>45%×${fmtInt.format(item.waterScore)} + 30%×${fmtInt.format(item.soilScore)} + 15%×${fmtInt.format(item.mechanicalScore)} + 10%×${fmtInt.format(item.climateScore)}</code></div><span class="recommendation-score">${item.score}</span></div>`).join("") : "<p>Tavsiya qoidalari topilmadi.</p>";
 }
 
 function splitCropOptions(selected) {
@@ -1960,7 +1958,6 @@ function selectField(feature, layer) {
     document.querySelector("#field-weather-formula").textContent = "Ushbu dala uchun ET qamrovi 70% chegaraga yetmadi";
     document.querySelector("#field-conclusion").textContent = "Taxminiy ET qo‘llanilmadi. Real ET bilan ishonchli fazoviy moslik topilgach ko‘rsatiladi.";
   }
-  document.querySelector("#field-note").textContent = p.crop_group_mvp ? `${p.crop_mvp_source === "system_recommendation" ? "Ekin tizim tavsiyasi bilan belgilandi" : "Ekin qo‘lda kiritildi"}. Formula dala ichidagi ${p.soil_gmr_components?.length || 1} ta real tuproq/GMR qismi maydonlarini alohida hisoblaydi.` : "Dala geometriyasi va tuproq/GMR tarkibi manbadan olindi; ekin ataylab bo‘sh qoldirilgan va faqat qo‘lda kiritiladi.";
   renderFieldDecision(p);
   renderRouteReport(p);
 }

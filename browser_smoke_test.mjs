@@ -171,6 +171,7 @@ try {
       tmScore: document.querySelector("#field-tm-score").textContent,
       tmTitle: document.querySelector("#field-soil-dominant").textContent,
       expectedTmScore: String(Math.round(tmCandidateForField(target.properties).mechanicalScore)),
+      fieldRecommendationRemoved: !document.querySelector(".crop-recommendation") && !document.querySelector("#field-note"),
       title: document.querySelector("#route-report-title").textContent,
       subtitle: document.querySelector("#route-report-subtitle").textContent,
       legend: document.querySelector(".route-chart-legend").textContent,
@@ -182,6 +183,7 @@ try {
   })()`);
   if (!routeUi.soilProfileSummary.includes("0–30 sm") || !routeUi.soilProfileSummary.includes("100–200 sm") || !routeUi.soilProfileSummary.includes("sizot")) throw new Error("Dala pasportida uch qatlamli tuproq profili yoki sizot ko‘rinmadi");
   if (routeUi.tmScore !== routeUi.expectedTmScore || !routeUi.tmTitle.includes("uchun Tm mosligi") || routeUi.tmScore === "0–200") throw new Error("Dala pasportidagi dinamik Tm moslik balli ishlamadi");
+  if (!routeUi.fieldRecommendationRemoved) throw new Error("Dala pasportidagi takroriy ekin tavsiyasi olib tashlanmadi");
   const tmDynamics = await evaluate(`(() => {
     const originalFeature = selectedFeature, originalLayer = selectedLayer;
     const originalScore = document.querySelector("#field-tm-score").textContent;
