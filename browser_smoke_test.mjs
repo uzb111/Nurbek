@@ -176,6 +176,7 @@ try {
       subtitle: document.querySelector("#route-report-subtitle").textContent,
       legend: document.querySelector(".route-chart-legend").textContent,
       explanation: document.querySelector("#route-explanation").textContent,
+      stageCount: document.querySelectorAll("#route-stage-list .route-stage-item").length,
       chartLabel: document.querySelector("#route-chart svg")?.getAttribute("aria-label"),
       chartText: document.querySelector("#route-chart").textContent,
       popup: popupHtml(target.properties),
@@ -199,9 +200,19 @@ try {
     return { found: Boolean(alternate && alternateLayer), originalScore, alternateScore };
   })()`);
   if (!tmDynamics.found || tmDynamics.originalScore === tmDynamics.alternateScore) throw new Error("Dala almashtirilganda Tm moslik balli yangilanmadi");
-  if (!routeUi.title.includes("dalaga suv yetadi") || !routeUi.subtitle.includes("tarmoq bo‘g‘ini")) throw new Error("Suv yo‘li sarlavhasi oddiy tilda emas");
-  if (!routeUi.legend.includes("Har bo‘g‘indan keyin qolgan suv") || routeUi.chartText.includes("LVL")) throw new Error("Route chart eski LVL terminlaridan tozalanmadi");
-  if (!routeUi.explanation.includes("Grafikni qanday o‘qish kerak") || !routeUi.chartLabel) throw new Error("Route chart izohi yoki accessibility yorlig‘i yo‘q");
+  if (!routeUi.title.includes("dalaga suv borgan") || !routeUi.subtitle.includes("oxirgi tuguni") || !routeUi.subtitle.includes("bosh manba")) throw new Error("Suv yo‘li sarlavhasi yoki quloq o‘rni oddiy tilda emas");
+  if (routeUi.stageCount < 2 || !routeUi.subtitle.includes(`${routeUi.stageCount} tugun`) || !routeUi.chartText.includes(`${routeUi.stageCount}/${routeUi.stageCount}`)) throw new Error("Line chart nuqtalari va quloqning yakuniy tartib raqami mos emas");
+  if (!routeUi.legend.includes("Har tarmoq o‘tishidan keyin qolgan suv") || routeUi.chartText.includes("LVL")) throw new Error("Route chart eski LVL terminlaridan tozalanmadi");
+  if (!routeUi.explanation.includes("marshrut bosqichi emas") || !routeUi.explanation.includes("oxirgi tuguni") || (!routeUi.chartText.includes("Yakuniy quloq") && !routeUi.chartText.includes("-quloq")) || !routeUi.chartLabel) throw new Error("Route chartda quloq raqami va yo‘ldagi o‘rni tushuntirilmadi");
+  if (process.env.CAPTURE_ROUTE_UI) {
+    await evaluate(`document.querySelector("#route-report").scrollIntoView({ block: "start" })`);
+    await delay(400);
+    const screenshot = await command("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+    const screenshotPath = path.join(os.tmpdir(), `agrotahlil-route-${browserWidth}.png`);
+    const { writeFile } = await import("node:fs/promises");
+    await writeFile(screenshotPath, Buffer.from(screenshot.data, "base64"));
+    console.log(JSON.stringify({ routeScreenshot: screenshotPath }, null, 2));
+  }
   if (!routeUi.popup.includes("Bonitet:") || !routeUi.popup.includes("Tm1 · 0–30 sm") || !routeUi.popup.includes("Tm2 · 30–100 sm") || !routeUi.popup.includes("Tm3 · 100–200 sm") || !routeUi.popup.includes("mexanik moslik") || !routeUi.popup.includes("15 balli") || !routeUi.popup.includes("45% suv") || !routeUi.popup.includes("/100") || routeUi.popup.includes("Zona:") || /kod\s+[1-8]/i.test(routeUi.popup)) throw new Error("Dala popupidagi Tm matni, uch qatlam bahosi yoki yakuniy formula noto‘g‘ri");
   if (process.env.CAPTURE_TM_POPUP) {
     await evaluate(`(() => { let layer = null; geoLayer.eachLayer((item) => { if (item.feature === selectedFeature) layer = item; }); layer?.openPopup(); document.querySelector("#map").scrollIntoView({ block: "center" }); })()`);
@@ -222,16 +233,6 @@ try {
     return { initiallyCollapsed, didExpand, collapsedAfterSelection: !control.classList.contains("leaflet-control-layers-expanded") };
   })()`);
   if (!layerControlUi.initiallyCollapsed || !layerControlUi.didExpand || !layerControlUi.collapsedAfterSelection) throw new Error("Xarita qatlamlari tugmasi yopilish siklidan o‘tmadi");
-  if (process.env.CAPTURE_ROUTE_UI) {
-    await evaluate(`document.querySelector("#route-report").scrollIntoView({ block: "start" })`);
-    await delay(500);
-    const screenshot = await command("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
-    const screenshotPath = path.join(os.tmpdir(), "agrotahlil-route-report.png");
-    const { writeFile } = await import("node:fs/promises");
-    await writeFile(screenshotPath, Buffer.from(screenshot.data, "base64"));
-    console.log(JSON.stringify({ routeScreenshot: screenshotPath }, null, 2));
-  }
-
   const split = await evaluate(`(async () => {
     const target = fullData.features.find((feature) => feature.properties.soil_gmr_components?.length > 1 && feature.properties.maydoni > 2);
     let targetLayer = null;

@@ -89,3 +89,8 @@ oynasida foydalanuvchiga faqat tushunarli mexanik tarkib nomlari chiqariladi.
 Ekin tavsiyasi tuman bo‘yicha yagona umumiy joylashtirish natijasidir. Shu sabab
 dala pasportidagi takroriy uchta muqobil ekin kartasi chiqarilmaydi; dala paneli
 faqat amalda tanlangan ekin va unga tegishli tuproq, suv hamda ET hisobini beradi.
+
+Suv yo‘li hisobotida `15-quloq` kabi raqam chiqish nuqtasi kodining nomi bo‘lib,
+15-bosqich degani emas. Grafik alohida `N/N` tartibini ko‘rsatadi: 1 bosh manba,
+oraliq kanal/ariq tugunlari va oxirgi yakuniy quloq jami `N` nuqta sifatida
+chiziladi. Yo‘qotish esa shu nuqtalar orasidagi `N−1` o‘tish bo‘yicha hisoblanadi.
