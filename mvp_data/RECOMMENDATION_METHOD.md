@@ -13,6 +13,8 @@ Suv normasi dala ichidagi barcha GMR/tuproq qismlari uchun PNG qoidalari bo‘yi
 
 `Tm1/Tm2/Tm3` qiymatlari FileGDB domen kodlaridir: 1 qumoqli, 2 yengil qumoqli, 3 o‘rta qumoqli, 4 og‘ir qumoqli, 5 qumli, 6 loyli, 7 shag‘alli maxsus sinf, 8 og‘ir va o‘rta qumoqli. Kodlar ayniqsa 5–8 oralig‘ida son jihatidan yaqin bo‘lsa ham mexanik jihatdan yaqin deb hisoblanmaydi.
 
+Har bir tuproq komponentining Tm mosligi maydoni bilan vaznlanadi. So‘ng `50% Tm1 + 30% Tm2 + 20% Tm3` mexanik bahosi olinib, yakuniy tavsiya balining 15 foizini beradi. Popup va dala pasporti qatlam kodi, domen nomi, qatlam bali hamda 15 ballik hissani ko‘rsatadi.
+
 `Norm_coverage = mavjud_m3ga / PNG_norm_m3ga × 100`
 
 `ET_coverage = mavjud_m3ga / (real_ET_mm × 10) × 100`

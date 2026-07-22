@@ -124,7 +124,16 @@ try {
   if (!routeUi.title.includes("dalaga suv yetadi") || !routeUi.subtitle.includes("tarmoq bo‘g‘ini")) throw new Error("Suv yo‘li sarlavhasi oddiy tilda emas");
   if (!routeUi.legend.includes("Har bo‘g‘indan keyin qolgan suv") || routeUi.chartText.includes("LVL")) throw new Error("Route chart eski LVL terminlaridan tozalanmadi");
   if (!routeUi.explanation.includes("Grafikni qanday o‘qish kerak") || !routeUi.chartLabel) throw new Error("Route chart izohi yoki accessibility yorlig‘i yo‘q");
-  if (!routeUi.popup.includes("Bonitet:") || !routeUi.popup.includes("ball") || !routeUi.popup.includes("0–30 / 30–100 / 100–200") || routeUi.popup.includes("Zona:")) throw new Error("Dala popupida bonitet/tuproq profili yo‘q yoki zona hali ko‘rinmoqda");
+  if (!routeUi.popup.includes("Bonitet:") || !routeUi.popup.includes("Tm1 · 0–30 sm") || !routeUi.popup.includes("Tm2 · 30–100 sm") || !routeUi.popup.includes("Tm3 · 100–200 sm") || !routeUi.popup.includes("mexanik moslik") || !routeUi.popup.includes("15 balli") || !routeUi.popup.includes("45% suv") || !routeUi.popup.includes("/100") || routeUi.popup.includes("Zona:")) throw new Error("Dala popupida Tm kodi, uch qatlam bahosi yoki yakuniy formula ko‘rinmadi");
+  if (process.env.CAPTURE_TM_POPUP) {
+    await evaluate(`(() => { let layer = null; geoLayer.eachLayer((item) => { if (item.feature === selectedFeature) layer = item; }); layer?.openPopup(); document.querySelector("#map").scrollIntoView({ block: "center" }); })()`);
+    await delay(500);
+    const screenshot = await command("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+    const screenshotPath = path.join(os.tmpdir(), "agrotahlil-tm-popup.png");
+    const { writeFile } = await import("node:fs/promises");
+    await writeFile(screenshotPath, Buffer.from(screenshot.data, "base64"));
+    console.log(JSON.stringify({ tmPopupScreenshot: screenshotPath }, null, 2));
+  }
   const layerControlUi = await evaluate(`(async () => {
     const control = document.querySelector(".leaflet-control-layers");
     const initiallyCollapsed = !control.classList.contains("leaflet-control-layers-expanded");

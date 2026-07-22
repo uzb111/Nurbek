@@ -100,6 +100,14 @@ Real ET mavjud bo‘lsa:
 
 `Texture_score = 0.50 × score(Tm1) + 0.30 × score(Tm2) + 0.20 × score(Tm3)`
 
+Dala bir nechta tuproq poligonidan tuzilgan bo‘lsa, har qatlam avval kesishgan maydon bo‘yicha vaznlanadi:
+
+`Tm_k_score_field = Σ(Area_component × compatibility(Tm_k, crop)) / Σ Area_component`
+
+`Tm_contribution = 0.15 × (0.50 × Tm1_score_field + 0.30 × Tm2_score_field + 0.20 × Tm3_score_field)`
+
+`compatibility` kategorik jadvaldir: mos sinf 100, yaqin mexanik sinf 72, noma’lum qiymat 60, nomos sinf 40–50. `7` shag‘alli va `8` aralash sinf sifatida alohida baholanadi; kodlar orasidagi oddiy arifmetik masofa ishlatilmaydi.
+
 `Suitability = 0.45 × Water_score + 0.30 × Bonitet_score + 0.15 × Texture_score + 0.10 × Climate_score`
 
 `Tm1`, `Tm2`, `Tm3` mos ravishda 0–30, 30–100 va 100–200 sm tuproq qatlamidir. Bo‘z/cho‘l zona atributi hisobdan chiqarildi. GMR–ekin uchun normativ jadvalda takror satr bo‘lsa, konservativ eng yuqori mavsumiy norma ishlatiladi.

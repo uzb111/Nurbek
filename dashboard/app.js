@@ -844,13 +844,15 @@ function cropCandidatesForField(properties) {
     const need = sum(calculated, (item) => number(item.component.area_ha) * item.norm);
     const norm = need / area;
     const soilScore = sum(calculated, (item) => number(item.component.area_ha) * soilSuitability(number(item.component.bonitet) || number(properties.bonitet), profile.minBonitet)) / area;
-    const mechanicalScore = sum(calculated, (item) => {
-      const component = item.component;
-      const tm1 = number(component.tm1) || number(properties.Tm1);
-      const tm2 = number(component.tm2) || number(properties.Tm2) || tm1;
-      const tm3 = number(component.tm3) || number(properties.Tm3) || tm2;
-      return number(component.area_ha) * (textureScore(tm1, profile.textures) * .50 + textureScore(tm2, profile.textures) * .30 + textureScore(tm3, profile.textures) * .20);
-    }) / area;
+    const textureLayerScores = [
+      { key: "tm1", property: "Tm1", label: "0–30 sm", weight: .50 },
+      { key: "tm2", property: "Tm2", label: "30–100 sm", weight: .30 },
+      { key: "tm3", property: "Tm3", label: "100–200 sm", weight: .20 },
+    ].map((layer) => ({
+      ...layer,
+      score: sum(calculated, (item) => number(item.component.area_ha) * textureScore(number(item.component[layer.key]) || number(properties[layer.property]), profile.textures)) / area,
+    }));
+    const mechanicalScore = sum(textureLayerScores, (layer) => layer.score * layer.weight);
     const officialWaterScore = Math.min(100, percent(availableM3Ha, norm));
     const actualEtDemandM3Ha = number(properties.actual_et_total_mm) * 10;
     const actualEtScore = properties.actual_et_status === "matched" && actualEtDemandM3Ha
@@ -858,7 +860,16 @@ function cropCandidatesForField(properties) {
       : officialWaterScore;
     const waterScore = officialWaterScore * .70 + actualEtScore * .30;
     const climateScore = hot ? profile.heat : 85;
-    return { group, score: Math.round(waterScore * .45 + soilScore * .30 + mechanicalScore * .15 + climateScore * .10), norm, waterScore };
+    const contributions = {
+      water: waterScore * .45,
+      bonitet: soilScore * .30,
+      texture: mechanicalScore * .15,
+      climate: climateScore * .10,
+    };
+    return {
+      group, score: Math.round(sum(Object.values(contributions), (value) => value)), norm,
+      waterScore, soilScore, mechanicalScore, climateScore, textureLayerScores, contributions,
+    };
   }).filter(Boolean).sort((first, second) => second.score - first.score);
 }
 
@@ -983,7 +994,7 @@ function renderFieldDecision(properties) {
   document.querySelector("#field-soil-note").textContent = `Ob-havo bonitet ballini qisqa muddatda o‘zgartirmaydi. Ammo ${weather ? `${fmtDec.format(weather.maxTemperature)}°C gacha issiqlik, ` : ""}suv tanqisligi, sho‘rlanish yoki sizotning ko‘tarilishi hosildorlikni pasaytirishi va uzoq muddatda tuproq holatiga ta’sir qilishi mumkin.`;
 
   const recommendations = cropRecommendations(properties);
-  document.querySelector("#field-crop-recommendations").innerHTML = recommendations.length ? recommendations.map((item, index) => `<div class="recommendation-item"><span class="recommendation-rank">${index + 1}</span><div><strong>${item.name}</strong><small>Norma ${fmtInt.format(item.norm)} m³/ga · suv qoplashi ${fmtInt.format(item.waterScore)}% · bonitet talabi ≥${item.minBonitet}</small></div><span class="recommendation-score">${item.score}</span></div>`).join("") : "<p>Tavsiya qoidalari topilmadi.</p>";
+  document.querySelector("#field-crop-recommendations").innerHTML = recommendations.length ? recommendations.map((item, index) => `<div class="recommendation-item"><span class="recommendation-rank">${index + 1}</span><div><strong>${item.name}</strong><small>Norma ${fmtInt.format(item.norm)} m³/ga · bonitet talabi ≥${item.minBonitet}</small><div class="recommendation-factors"><span>Suv ${fmtInt.format(item.waterScore)}</span><span>Bonitet ${fmtInt.format(item.soilScore)}</span><span>Tm ${fmtInt.format(item.mechanicalScore)}</span><span>Ob-havo ${fmtInt.format(item.climateScore)}</span></div><code>45%×${fmtInt.format(item.waterScore)} + 30%×${fmtInt.format(item.soilScore)} + 15%×${fmtInt.format(item.mechanicalScore)} + 10%×${fmtInt.format(item.climateScore)}</code></div><span class="recommendation-score">${item.score}</span></div>`).join("") : "<p>Tavsiya qoidalari topilmadi.</p>";
 }
 
 function splitCropOptions(selected) {
@@ -1274,12 +1285,14 @@ function renderSplitEditors() {
     const properties = feature.properties;
     const summary = splitPartSummary(feature);
     const rule = summary.rule;
-    const soilProfile = `<div class="split-soil-readonly"><span>0–30 sm<strong>${escapeHtml(TEXTURE_LABELS[number(properties.Tm1)] || "—")}</strong></span><span>30–100 sm<strong>${escapeHtml(TEXTURE_LABELS[number(properties.Tm2)] || "—")}</strong></span><span>100–200 sm<strong>${escapeHtml(TEXTURE_LABELS[number(properties.Tm3)] || "—")}</strong></span><span>Sizot<strong>${properties.SS ? `${fmtInt.format(number(properties.SS) * 1000)} mm` : "—"}</strong></span></div>`;
+    const soilProfile = `<div class="split-soil-readonly"><span>Tm1 · 0–30 sm<strong>${number(properties.Tm1) ? `kod ${number(properties.Tm1)} · ` : ""}${escapeHtml(TEXTURE_LABELS[number(properties.Tm1)] || "—")}</strong></span><span>Tm2 · 30–100 sm<strong>${number(properties.Tm2) ? `kod ${number(properties.Tm2)} · ` : ""}${escapeHtml(TEXTURE_LABELS[number(properties.Tm2)] || "—")}</strong></span><span>Tm3 · 100–200 sm<strong>${number(properties.Tm3) ? `kod ${number(properties.Tm3)} · ` : ""}${escapeHtml(TEXTURE_LABELS[number(properties.Tm3)] || "—")}</strong></span><span>Sizot<strong>${properties.SS ? `${fmtInt.format(number(properties.SS) * 1000)} mm` : "—"}</strong></span></div>`;
     if (!properties.crop_group_mvp) {
       return `<article class="split-part-card" data-part-index="${index}"><div class="split-part-head"><strong>Qism ${properties.split_part}</strong><span>${fmtDec.format(summary.area)} ga</span></div><div class="split-part-grid"><label>Ekin<select data-split-field="crop_group_mvp">${splitCropOptions(properties.crop_group_mvp)}</select></label>${soilProfile}</div><div class="split-result"><div class="split-full"><span>Hisoblash holati</span><strong>Avval shu qism uchun ekin tanlang</strong><small>Maydon × GMR bo‘yicha konservativ PNG normasi va tarmoqdan yetadigan suv alohida qayta hisoblanadi.</small></div></div><p class="split-alternatives">GMR, bonitet, uch qatlamli mexanik tarkib va sizot qiymati asl geometriyadan avtomatik kesildi; faqat ekin tanlanadi.</p></article>`;
     }
     const waterMeta = WATER_STATUS_META[summary.water.key];
-    return `<article class="split-part-card" data-part-index="${index}"><div class="split-part-head"><strong>Qism ${properties.split_part}</strong><span>${fmtDec.format(summary.area)} ga · ${escapeHtml(properties.field_id.slice(-18))}</span></div><div class="split-part-grid"><label>Ekin<select data-split-field="crop_group_mvp">${splitCropOptions(properties.crop_group_mvp)}</select></label>${soilProfile}</div><div class="split-result">${rule ? `<div><span>PNG normasi</span><strong>${fmtInt.format(properties.norm_m3ha_mvp)} m³/ga</strong><small>GMR bo‘yicha konservativ norma</small></div><div><span>Suv limiti</span><strong>${fmtInt.format(properties.planned_water_m3_mvp)} m³</strong><small>maydon × norma</small></div><div><span>Sug‘orish</span><strong>${escapeHtml(rule.irrigation_pattern)}</strong><small>${rule.start_month_day} — ${rule.end_month_day}</small></div>` : `<div class="split-full"><span>PNG qoidasi</span><strong>Bu GMR–ekin kombinatsiyasi topilmadi</strong></div>`}<div><span>ET sof talab</span><strong>${fmtInt.format(summary.etM3)} m³</strong><small>${fmtInt.format(summary.water.demandM3Ha)} m³/ga</small></div><div><span>Mavjud suv</span><strong>${fmtInt.format(summary.availableM3)} m³</strong><small>${fmtInt.format(summary.water.coverage * 100)}% qoplash</small></div><div><span>Suv holati</span><strong style="color:${waterMeta.color}">${waterMeta.label}</strong><small>mustaqil qism hisobi</small></div></div><p class="split-alternatives">Mos muqobil ekinlar: ${escapeHtml(summary.alternatives || "aniqlanmadi")}</p></article>`;
+    const cropCandidate = (cropCandidatesForField(properties) || []).find((item) => item.group === properties.crop_group_mvp);
+    const textureResult = cropCandidate ? `<div><span>Tm mosligi</span><strong>${fmtInt.format(cropCandidate.mechanicalScore)} ball</strong><small>50% Tm1 + 30% Tm2 + 20% Tm3 · umumiy formulada ${fmtDec.format(cropCandidate.contributions.texture)}/15</small></div>` : "";
+    return `<article class="split-part-card" data-part-index="${index}"><div class="split-part-head"><strong>Qism ${properties.split_part}</strong><span>${fmtDec.format(summary.area)} ga · ${escapeHtml(properties.field_id.slice(-18))}</span></div><div class="split-part-grid"><label>Ekin<select data-split-field="crop_group_mvp">${splitCropOptions(properties.crop_group_mvp)}</select></label>${soilProfile}</div><div class="split-result">${rule ? `<div><span>PNG normasi</span><strong>${fmtInt.format(properties.norm_m3ha_mvp)} m³/ga</strong><small>GMR bo‘yicha konservativ norma</small></div><div><span>Suv limiti</span><strong>${fmtInt.format(properties.planned_water_m3_mvp)} m³</strong><small>maydon × norma</small></div><div><span>Sug‘orish</span><strong>${escapeHtml(rule.irrigation_pattern)}</strong><small>${rule.start_month_day} — ${rule.end_month_day}</small></div>` : `<div class="split-full"><span>PNG qoidasi</span><strong>Bu GMR–ekin kombinatsiyasi topilmadi</strong></div>`}${textureResult}<div><span>ET sof talab</span><strong>${fmtInt.format(summary.etM3)} m³</strong><small>${fmtInt.format(summary.water.demandM3Ha)} m³/ga</small></div><div><span>Mavjud suv</span><strong>${fmtInt.format(summary.availableM3)} m³</strong><small>${fmtInt.format(summary.water.coverage * 100)}% qoplash</small></div><div><span>Suv holati</span><strong style="color:${waterMeta.color}">${waterMeta.label}</strong><small>mustaqil qism hisobi</small></div></div><p class="split-alternatives">Mos muqobil ekinlar: ${escapeHtml(summary.alternatives || "aniqlanmadi")}</p></article>`;
   }).join("");
   container.querySelectorAll("[data-split-field]").forEach((control) => control.addEventListener("change", (event) => {
     const card = event.target.closest("[data-part-index]");
@@ -1421,9 +1434,20 @@ function popupHtml(properties) {
   const water = districtBalance && properties.crop_group_mvp ? fieldWaterAnalysis(properties) : null;
   const waterLine = water ? `<p class="popup-line" style="color:${WATER_STATUS_META[water.key].color}">${WATER_STATUS_META[water.key].label} · ${fmtInt.format(water.coverage * 100)}%</p>` : "";
   const bonitet = number(properties.bonitet);
-  const profile = [properties.Tm1, properties.Tm2, properties.Tm3].map((value) => TEXTURE_LABELS[number(value)] || "—").join(" / ");
+  const recommendation = (cropCandidatesForField(properties) || []).find((item) => item.group === properties.crop_group_mvp) || recommendedCropForField(properties);
+  const textureLayers = [
+    { key: "Tm1", label: "0–30 sm", score: recommendation?.textureLayerScores?.[0]?.score },
+    { key: "Tm2", label: "30–100 sm", score: recommendation?.textureLayerScores?.[1]?.score },
+    { key: "Tm3", label: "100–200 sm", score: recommendation?.textureLayerScores?.[2]?.score },
+  ];
+  const textureRows = textureLayers.map((layer) => {
+    const code = number(properties[layer.key]);
+    const label = TEXTURE_LABELS[code] || "aniqlanmagan";
+    return `<div><span>${layer.key} · ${layer.label}</span><strong>${code ? `kod ${code} · ` : ""}${escapeHtml(label)}</strong><small>${Number.isFinite(layer.score) ? `${fmtInt.format(layer.score)} ball` : "baholanmagan"}</small></div>`;
+  }).join("");
+  const textureFormula = recommendation ? `<div class="popup-tm-total"><span>${escapeHtml(CROP_LABELS[recommendation.group] || recommendation.group)} uchun mexanik moslik</span><strong>${fmtInt.format(recommendation.mechanicalScore)} ball</strong><small>50%×Tm1 + 30%×Tm2 + 20%×Tm3 = yakuniy formulaning ${fmtDec.format(recommendation.contributions.texture)} / 15 balli</small><code>45% suv (${fmtInt.format(recommendation.waterScore)}) + 30% bonitet (${fmtInt.format(recommendation.soilScore)}) + 15% Tm (${fmtInt.format(recommendation.mechanicalScore)}) + 10% ob-havo (${fmtInt.format(recommendation.climateScore)}) = ${fmtInt.format(recommendation.score)}/100</code></div>` : "";
   const groundwater = properties.SS ? `${fmtInt.format(number(properties.SS) * 1000)} mm` : "—";
-  return `<h3 class="popup-title">${escapeHtml(text(properties.crop_mvp, "Ekin ko‘rsatilmagan"))}</h3><p class="popup-line">Maydon: <strong>${fmtDec.format(number(properties.maydoni))} ga</strong></p><p class="popup-line">Bonitet: <strong>${bonitet ? `${fmtDec.format(bonitet)} ball` : "Ma’lumot yo‘q"}</strong></p><p class="popup-line">GMR: <strong>${escapeHtml(text(properties.gmr_mvp))}</strong></p><p class="popup-line">Tuproq 0–30 / 30–100 / 100–200 sm: <strong>${escapeHtml(profile)}</strong></p><p class="popup-line">Sizot chuqurligi: <strong>${escapeHtml(groundwater)}</strong></p>${waterLine}<p class="popup-line" style="color:${meta.color}">${meta.label}</p>`;
+  return `<h3 class="popup-title">${escapeHtml(text(properties.crop_mvp, "Ekin ko‘rsatilmagan"))}</h3><p class="popup-line">Maydon: <strong>${fmtDec.format(number(properties.maydoni))} ga</strong></p><p class="popup-line">Bonitet: <strong>${bonitet ? `${fmtDec.format(bonitet)} ball` : "Ma’lumot yo‘q"}</strong></p><p class="popup-line">GMR: <strong>${escapeHtml(text(properties.gmr_mvp))}</strong></p><div class="popup-tm-grid">${textureRows}</div>${textureFormula}<p class="popup-line">Sizot chuqurligi: <strong>${escapeHtml(groundwater)}</strong></p>${waterLine}<p class="popup-line" style="color:${meta.color}">${meta.label}</p>`;
 }
 
 function networkNodeKey(value) { return String(value || "").trim().toLocaleLowerCase(); }
@@ -1641,7 +1665,7 @@ function renderLayer(features) {
   geoLayer = L.geoJSON({ type: "FeatureCollection", features }, {
     renderer: L.canvas({ padding: .5 }), style: styleFor,
     onEachFeature(feature, layer) {
-      layer.bindPopup(popupHtml(feature.properties));
+      layer.bindPopup(() => popupHtml(feature.properties), { maxWidth: 380, minWidth: 300 });
       layer.on({ mouseover(event) { event.target.setStyle({ weight: 3, color: "#00e5ff", fillOpacity: .9 }); }, mouseout(event) { if (event.target !== selectedLayer) geoLayer.resetStyle(event.target); }, click(event) { selectField(feature, event.target); } });
     },
   }).addTo(map);
@@ -1795,11 +1819,11 @@ function renderSoilComposition(properties) {
     : `${fmtInt.format(number(properties.merged_source_parts) || components.length || 1)} GIS qism → 1 dala`;
   document.querySelector("#field-soil-components").innerHTML = components.length ? components.map((component) => {
     const norm = number(component.norm_m3ha);
-    const profile = `0–30 ${TEXTURE_LABELS[number(component.tm1)] || "—"} · 30–100 ${TEXTURE_LABELS[number(component.tm2)] || "—"} · 100–200 ${TEXTURE_LABELS[number(component.tm3)] || "—"}`;
+    const profile = `Tm1[${number(component.tm1) || "—"}] 0–30 ${TEXTURE_LABELS[number(component.tm1)] || "—"} · Tm2[${number(component.tm2) || "—"}] 30–100 ${TEXTURE_LABELS[number(component.tm2)] || "—"} · Tm3[${number(component.tm3) || "—"}] 100–200 ${TEXTURE_LABELS[number(component.tm3)] || "—"}`;
     const groundwater = component.ss ? `${fmtInt.format(number(component.ss) * 1000)} mm` : "—";
     const normText = `${profile} · sizot ${groundwater}${norm ? ` · ${fmtInt.format(norm)} m³/ga` : ""}`;
     return `<div class="soil-component-row"><strong>${fmtDec.format(number(component.area_ha))} ga</strong><span>GMR ${escapeHtml(text(component.gmr, "—"))}</span><span>${component.bonitet === null ? "Bonitet —" : `${fmtInt.format(number(component.bonitet))} ball`}</span><small>${escapeHtml(normText)}</small></div>`;
-  }).join("") : `<div class="soil-component-row"><strong>${fmtDec.format(number(properties.maydoni))} ga</strong><span>GMR ${escapeHtml(text(properties.gmr_mvp))}</span><span>${fmtInt.format(number(properties.bonitet))} ball</span><small>0–30 ${escapeHtml(TEXTURE_LABELS[number(properties.Tm1)] || "—")} · 30–100 ${escapeHtml(TEXTURE_LABELS[number(properties.Tm2)] || "—")} · 100–200 ${escapeHtml(TEXTURE_LABELS[number(properties.Tm3)] || "—")}</small></div>`;
+  }).join("") : `<div class="soil-component-row"><strong>${fmtDec.format(number(properties.maydoni))} ga</strong><span>GMR ${escapeHtml(text(properties.gmr_mvp))}</span><span>${fmtInt.format(number(properties.bonitet))} ball</span><small>Tm1[${number(properties.Tm1) || "—"}] ${escapeHtml(TEXTURE_LABELS[number(properties.Tm1)] || "—")} · Tm2[${number(properties.Tm2) || "—"}] ${escapeHtml(TEXTURE_LABELS[number(properties.Tm2)] || "—")} · Tm3[${number(properties.Tm3) || "—"}] ${escapeHtml(TEXTURE_LABELS[number(properties.Tm3)] || "—")}</small></div>`;
 }
 
 function selectField(feature, layer) {
@@ -1822,7 +1846,7 @@ function selectField(feature, layer) {
   const meta = getMeta(p.demo_norm_status);
   const status = document.querySelector("#field-status"); status.textContent = meta.label; status.className = `status-pill ${meta.className}`;
   document.querySelector("#field-soil-dominant").textContent = TEXTURE_LABELS[number(p.Tm1)] || "Tarkib aniqlanmagan";
-  document.querySelector("#field-soil-profile-summary").textContent = `0–30 sm ${TEXTURE_LABELS[number(p.Tm1)] || "—"} · 30–100 sm ${TEXTURE_LABELS[number(p.Tm2)] || "—"} · 100–200 sm ${TEXTURE_LABELS[number(p.Tm3)] || "—"} · sizot ${p.SS ? `${fmtInt.format(number(p.SS) * 1000)} mm` : "—"}`;
+  document.querySelector("#field-soil-profile-summary").textContent = `Tm1[${number(p.Tm1) || "—"}] 0–30 sm ${TEXTURE_LABELS[number(p.Tm1)] || "—"} · Tm2[${number(p.Tm2) || "—"}] 30–100 sm ${TEXTURE_LABELS[number(p.Tm2)] || "—"} · Tm3[${number(p.Tm3) || "—"}] 100–200 sm ${TEXTURE_LABELS[number(p.Tm3)] || "—"} · sizot ${p.SS ? `${fmtInt.format(number(p.SS) * 1000)} mm` : "—"}`;
   document.querySelector("#field-crop").textContent = `${text(p.crop_mvp, "Ekin kiritilmagan")} · ${sourceLabel(p.crop_mvp_source)}`;
   document.querySelector("#field-area").textContent = `${fmtDec.format(number(p.maydoni))} ga`;
   const distinctGmrs = [...new Set((p.soil_gmr_components || []).map((component) => component.gmr).filter(Boolean))];
