@@ -93,18 +93,18 @@ const infrastructure = {
   groundwater_stations: kasbiStations.length,
 };
 
-// Verified deterministic output of the current 45/30/15/10 recommendation engine.
+// Verified deterministic output of the current zone-free 45/30/15/10 recommendation engine.
 const recommendation = {
   method: "45% suv + 30% bonitet + 15% mexanik tarkib + 10% ob-havo",
   total_fields: 10710,
   total_area_ha: 61922.12425175663,
   crops: [
-    { group: "winter_grain", label: "Bug‘doy", fields: 5804, area_ha: 34803.22096976547, color: "#1c7ed6" },
-    { group: "cotton", label: "Paxta", fields: 4045, area_ha: 22596.921495126593, color: "#168951" },
-    { group: "maize", label: "Makkajo‘xori", fields: 780, area_ha: 4081.5295051848507, color: "#f0ad22" },
-    { group: "melons", label: "Poliz", fields: 58, area_ha: 388.13349105455404, color: "#ef7f33" },
-    { group: "vegetables", label: "Sabzavot", fields: 11, area_ha: 47.33017777538011, color: "#e84d72" },
-    { group: "alfalfa", label: "Beda", fields: 12, area_ha: 4.988612849726975, color: "#7c62cc" },
+    { group: "winter_grain", label: "Bug‘doy", fields: 5826, area_ha: 34882.700418220535, color: "#1c7ed6" },
+    { group: "cotton", label: "Paxta", fields: 4014, area_ha: 22566.539330761203, color: "#168951" },
+    { group: "maize", label: "Makkajo‘xori", fields: 777, area_ha: 4081.5269875299014, color: "#f0ad22" },
+    { group: "melons", label: "Poliz", fields: 59, area_ha: 339.02201967504874, color: "#ef7f33" },
+    { group: "vegetables", label: "Sabzavot", fields: 25, area_ha: 47.337322253199765, color: "#e84d72" },
+    { group: "alfalfa", label: "Beda", fields: 9, area_ha: 4.998173316580363, color: "#7c62cc" },
   ].map((item) => ({ ...item, area_ha: round(item.area_ha, 1), share_pct: round(item.area_ha / fieldArea.total_ha * 100, 2) })),
 };
 

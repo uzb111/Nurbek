@@ -52,7 +52,6 @@ const summary = {
     estimated_water_m3: sum(estimated, (item) => item.planned_water_m3_mvp),
     crop_proxy_polygons: properties.filter((item) => item.crop_mvp_source !== "observed").length,
     gmr_proxy_polygons: properties.filter((item) => item.gmr_mvp_source !== "observed").length,
-    zone_estimated_polygons: properties.filter((item) => item.zone_status !== "exclusive_gmr").length,
     bonitet_missing_polygons: properties.filter((item) => item.bonitet === null || item.bonitet === "").length,
     small_polygons_under_01ha: properties.filter((item) => number(item.maydoni) < 0.1).length,
     long_crop_proxy_over_500m: properties.filter((item) => number(item.crop_proxy_distance_m) > 500).length,
@@ -65,7 +64,6 @@ const summary = {
   },
   crops: aggregate("crop_mvp"),
   crop_groups: aggregate("crop_group_mvp"),
-  zones: aggregate("irrigation_zone"),
   gmrs: aggregate("gmr_mvp"),
 };
 

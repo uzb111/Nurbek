@@ -60,7 +60,9 @@ function componentSummary(features) {
       gmr: properties.gmr_mvp || null,
       bonitet: Number.isFinite(Number(properties.bonitet)) ? Number(properties.bonitet) : null,
       tm1: Number.isFinite(Number(properties.Tm1)) ? Number(properties.Tm1) : null,
-      zone: properties.irrigation_zone || null,
+      tm2: Number.isFinite(Number(properties.Tm2)) ? Number(properties.Tm2) : null,
+      tm3: Number.isFinite(Number(properties.Tm3)) ? Number(properties.Tm3) : null,
+      ss: Number.isFinite(Number(properties.SS)) ? Number(properties.SS) : null,
     };
     const key = JSON.stringify(component);
     if (!components.has(key)) components.set(key, { ...component, area_ha: 0 });
@@ -103,8 +105,9 @@ for (const [fieldId, features] of groups) {
     gmr_mvp: dominant(features, "gmr_mvp"),
     bonitet: weighted(features, "bonitet"),
     Tm1: dominant(features, "Tm1"),
-    irrigation_zone: dominant(features, "irrigation_zone"),
-    zone_confidence: weighted(features, "zone_confidence"),
+    Tm2: dominant(features, "Tm2"),
+    Tm3: dominant(features, "Tm3"),
+    SS: weighted(features, "SS"),
     water_route: primaryRoute?.route || null,
     water_block_id: primaryRoute?.block_id || null,
     route_depth: primaryRoute?.route ? primaryRoute.route.split("→").filter(Boolean).length : null,

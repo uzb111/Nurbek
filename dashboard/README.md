@@ -35,6 +35,11 @@ Bonitet tuproq poligoni maydoniga vaznlanadi. `Tm1`, `Tm2`, `Tm3` mos ravishda
 sizot chuqurligi metrdan millimetrga o‘tkaziladi; 15 metrdan katta aniq kiritish
 xatolari yig‘ma statistikadan chiqarilib, soni auditda saqlanadi.
 
+Bo‘z/cho‘l zona atributi foydalanuvchi interfeysi va ekin tavsiyasi hisobidan
+chiqarilgan. Mexanik tarkib skori uch qatlamdan 50% / 30% / 20% vaznda olinadi.
+Bir GMR–ekin uchun PNGda ikki satr uchrasa, suvni kam baholamaslik uchun yuqori
+mavsumiy norma konservativ hisob sifatida ishlatiladi.
+
 Open-Meteo zaxira nusxasini yangilash:
 
 ```powershell

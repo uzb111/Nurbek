@@ -8,10 +8,9 @@ import { readFile, writeFile, stat } from "node:fs/promises";
 const source = new URL("./mvp_data/geojson/fields_delivery_2025.geojson", import.meta.url);
 const output = new URL("./mvp_data/geojson/fields_delivery_2025_lite.geojson", import.meta.url);
 const KEEP = [
-  "field_id", "feature_id", "maydoni", "Tm1", "bonitet",
+  "field_id", "feature_id", "maydoni", "Tm1", "Tm2", "Tm3", "SS", "bonitet",
   "crop_mvp", "crop_mvp_source", "crop_mvp_confidence", "crop_group_mvp",
   "gmr_mvp", "gmr_mvp_source", "gmr_mvp_confidence",
-  "irrigation_zone", "zone_status", "zone_confidence", "zone_distance_m",
   "irrigation_count_mvp", "norm_m3ha_mvp", "irrigation_start_mvp", "irrigation_end_mvp",
   "planned_water_m3_mvp", "demo_norm_status", "demo_proxy_used",
   "plan_part_id", "water_block_id", "water_route", "route_depth", "block_overlap_pct", "block_match_status",

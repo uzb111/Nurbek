@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-22T04:36:20.411Z",
+  "generated_at": "2026-07-22T05:00:07.185Z",
   "scope": "Kasbi tumani, tuman kodi 1803",
   "sources": [
     "fields_merged_manual.geojson",
@@ -258,23 +258,23 @@
       {
         "group": "winter_grain",
         "label": "Bug‘doy",
-        "fields": 5804,
-        "area_ha": 34803.2,
+        "fields": 5826,
+        "area_ha": 34882.7,
         "color": "#1c7ed6",
-        "share_pct": 56.2
+        "share_pct": 56.33
       },
       {
         "group": "cotton",
         "label": "Paxta",
-        "fields": 4045,
-        "area_ha": 22596.9,
+        "fields": 4014,
+        "area_ha": 22566.5,
         "color": "#168951",
-        "share_pct": 36.49
+        "share_pct": 36.44
       },
       {
         "group": "maize",
         "label": "Makkajo‘xori",
-        "fields": 780,
+        "fields": 777,
         "area_ha": 4081.5,
         "color": "#f0ad22",
         "share_pct": 6.59
@@ -282,15 +282,15 @@
       {
         "group": "melons",
         "label": "Poliz",
-        "fields": 58,
-        "area_ha": 388.1,
+        "fields": 59,
+        "area_ha": 339,
         "color": "#ef7f33",
-        "share_pct": 0.63
+        "share_pct": 0.55
       },
       {
         "group": "vegetables",
         "label": "Sabzavot",
-        "fields": 11,
+        "fields": 25,
         "area_ha": 47.3,
         "color": "#e84d72",
         "share_pct": 0.08
@@ -298,7 +298,7 @@
       {
         "group": "alfalfa",
         "label": "Beda",
-        "fields": 12,
+        "fields": 9,
         "area_ha": 5,
         "color": "#7c62cc",
         "share_pct": 0.01

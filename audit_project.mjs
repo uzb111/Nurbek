@@ -56,9 +56,16 @@ if (routeDepthErrors) errors.push(`${routeDepthErrors} dalada route_depth suv yo
 if (routeLossErrors) errors.push(`${routeLossErrors} dalada 1,5%/bosqich formulasi mos emas`);
 
 const componentIds = new Set(components.map((feature) => feature.properties?.field_id).filter(Boolean));
-const allowedComponentProperties = new Set(["field_id", "gmr_mvp", "bonitet", "Tm1", "irrigation_zone", "water_route", "water_block_id", "route_depth", "route_loss_pct_scn", "block_match_status"]);
+const allowedComponentProperties = new Set(["field_id", "gmr_mvp", "bonitet", "Tm1", "Tm2", "Tm3", "SS", "water_route", "water_block_id", "route_depth", "route_loss_pct_scn", "block_match_status"]);
 const unexpectedComponentProperties = [...new Set(components.flatMap((feature) => Object.keys(feature.properties || {})).filter((key) => !allowedComponentProperties.has(key)))];
 if (unexpectedComponentProperties.length) errors.push(`Public split qatlamida kutilmagan atributlar bor: ${unexpectedComponentProperties.join(", ")}`);
+const forbiddenZoneProperties = fields.filter((feature) => Object.hasOwn(feature.properties || {}, "irrigation_zone")).length;
+if (forbiddenZoneProperties) errors.push(`${forbiddenZoneProperties} dalada endi ishlatilmaydigan irrigation_zone atributi qolgan`);
+const soilProfileCoverage = Object.fromEntries(["Tm1", "Tm2", "Tm3", "SS"].map((key) => [key, fields.filter((feature) => number(feature.properties?.[key]) > 0).length]));
+for (const [key, covered] of Object.entries(soilProfileCoverage)) {
+  if (!covered) errors.push(`${key} tuproq/sizot atributida birorta ham qiymat yo‘q`);
+}
+if (/irrigation_zone|Bo‘z|Cho‘l/.test(appText + htmlText)) errors.push("Dashboard interfeysi yoki algoritmida eski zona atamasi qolgan");
 const missingComponentFields = [...ids].filter((id) => !componentIds.has(id));
 if (missingComponentFields.length) errors.push(`${missingComponentFields.length} dalada split uchun asl komponent geometriyasi yo‘q`);
 
@@ -96,14 +103,13 @@ if (!close(sum(districtAnalytics.recommendation.crops, (item) => item.area_ha), 
 if (districtAnalytics.recommendation.crops.find((item) => item.group === "alfalfa")?.area_ha > 5) errors.push("Beda tavsiyasi 5 ga limitdan oshdi");
 
 const cropGroups = [...new Set(rules.map((rule) => rule.crop_group))];
-const zones = [...new Set(rules.map((rule) => rule.irrigation_zone))];
 const report = {
   status: errors.length ? "failed" : "passed",
   errors,
   warnings,
   fields: { logical: fields.length, unique_ids: ids.size, area_ha: fieldArea, routed: routedFields },
-  components: { features: components.length, represented_fields: componentIds.size },
-  irrigation_rules: { rows: rules.length, crop_groups: cropGroups, zones },
+  components: { features: components.length, represented_fields: componentIds.size, soil_profile_coverage: soilProfileCoverage },
+  irrigation_rules: { rows: rules.length, crop_groups: cropGroups, matching_basis: "GMR + crop; zone is not used" },
   actual_et: { matched_fields: etMatched, april_september_m3: etAprSepM3, spatial_threshold_pct: actualEt.metadata?.match_threshold_pct },
   official_limit: { total_m3: number(official.total_limit_m3), monthly_sum_m3: officialMonthTotal },
   official_period_weather: { days: periodWeatherData.daily?.time?.length || 0, rain_mm: periodRainMm, et0_mm: periodEt0Mm },

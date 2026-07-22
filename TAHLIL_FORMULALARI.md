@@ -1,13 +1,13 @@
 # AgroTahlil: xulosa va formulalar
 
-> 2026-07-21 auditidan keyingi amaldagi batafsil metodika `FORMULA_ALGORITHM_AUDIT.md` faylida. Quyidagi ayrim umumiy dashboard xulosalari tarixiy/proksi qatlamni tavsiflaydi.
+> 2026-07-22 auditidan keyingi amaldagi batafsil metodika `FORMULA_ALGORITHM_AUDIT.md` faylida. Quyidagi ayrim umumiy dashboard xulosalari tarixiy/proksi qatlamni tavsiflaydi.
 
 ## Ma’lumot maqomi
 
 - **Real API ma’lumoti:** Open-Meteo harorat, yog‘in, ET0, shamol va tuproq
   namligi modeli.
 - **Manba ma’lumoti:** GDBdagi dala, maydon, ekin, GMR va bonitet atributlari.
-- **Taxminiy ma’lumot:** yetishmagan ekin/GMR/zona, ekin koeffitsiyenti va sizot
+- **Taxminiy ma’lumot:** yetishmagan ekin/GMR, ekin koeffitsiyenti va sizot
   suvining hisobiy hissasi.
 - **Normativ ma’lumot:** taqdim etilgan PNG jadvallaridan ko‘chirilgan suv
   normalari.
@@ -42,10 +42,10 @@ Bu yerda `1 mm × 1 ga = 10 m³`. `Kc` va sizot hissasi hozircha taxminiy.
 6. Taxminiy hisob ulushi — `taxminiy poligonlar / jami poligon × 100`.
 7. Ekin taxmini — ekin bo‘sh bo‘lsa eng yaqin ekinli dala.
 8. GMR taxmini — GMR bo‘sh bo‘lsa eng yaqin ma’lum GMR.
-9. Sug‘orish zonasi — tasdiqlangan zonaga hududiy yaqinlik.
+9. Tuproq profili — Tm1/Tm2/Tm3 bo‘yicha 0–30, 30–100 va 100–200 sm qatlamlar.
 10. Eng katta suv iste’molchisi — `max(Σ ekin suv hajmi)`.
 11. Yetakchi ekinning suv ulushi — `ekin suvi / jami suv × 100`.
-12. Hududiy zona balansi — `zona maydoni / jami maydon × 100`.
+12. Sizot suvi holati — chuqurlik metrdan millimetrga o‘tkazilib diapazonlarda ko‘rsatiladi.
 13. Asosiy GMR guruhi — poligon soni va suv hajmi bo‘yicha maksimum.
 14. Bonitet bo‘shliqlari — `bonitet IS NULL yoki bo‘sh`.
 15. Juda kichik geometriya — `maydon < 0,1 ga`.
@@ -111,12 +111,12 @@ Ta’minlanganlik:
 
 ## Ekin tavsiyasi
 
-Har bir zona va GMR uchun PNG normativ jadvalidagi barcha ekinlar solishtiriladi:
+Har bir GMR uchun PNG normativ jadvalidagi barcha ekinlar solishtiriladi. Bo‘z/cho‘l zona atributi hisobda ishlatilmaydi:
 
 `Suitability = 0.45×Water + 0.30×Bonitet + 0.15×Texture + 0.10×Climate`
 
 `Water` — 70% tuman foydali suvi / ekin normasi va 30% tuman foydali suvi / real ET talabi; `Bonitet` — ekin uchun minimal
-bonitetga nisbatan baho; `Texture` — Tm1 mexanik tarkib sinfi; `Climate` —
+bonitetga nisbatan baho; `Texture` — 50% Tm1 (0–30 sm), 30% Tm2 (30–100 sm) va 20% Tm3 (100–200 sm) mexanik tarkib bahosi; `Climate` —
 Open-Meteo issiqlik stressi va ekinning issiqqa mosligi.
 
 Ob-havo bonitet ballini bir kunda o‘zgartirmaydi. Bonitet tuproqning nisbatan
@@ -136,17 +136,15 @@ Qismlarning tahliliy maydoni manbadagi dala maydoniga mutanosib saqlanadi:
 `Part_area = Parent_area × Geometric_part_area / ΣGeometric_part_area`
 
 Shuning uchun `A_area + B_area = Parent_area`. Asl tuproq/GMR fragmentlari A va B
-geometriyasi bilan fazoviy kesiladi; zona, GMR, bonitet, Tm1 va dominant suv yo‘li
+geometriyasi bilan fazoviy kesiladi; GMR, bonitet, Tm1, Tm2, Tm3, sizot chuqurligi va dominant suv yo‘li
 har qism uchun avtomatik qayta olinadi. Foydalanuvchi faqat ekinni tanlaydi.
 Ekinlar: paxta, beda, makkajo‘xori, sabzavot, poliz va bug‘doy.
 
-Suv normasi faqat `zona + GMR + ekin` kombinatsiyasi PNGdan aniq topilganda
-qo‘llanadi:
+Suv normasi `GMR + ekin` kombinatsiyasi bo‘yicha olinadi. Takror normativ satrlar orasidan suv talabini kamaytirib ko‘rsatmaslik uchun eng yuqori mavsumiy norma tanlanadi:
 
 `Part_water_limit = Part_area × PNG_seasonal_norm_m3ha`
 
-Kombinatsiya jadvalda bo‘lmasa, boshqa qatordan yashirin almashtirish qilinmaydi
-va «PNG qoidasi topilmadi» deb ko‘rsatiladi. Ekin o‘zgartirilganda suv limiti,
+Aniq GMR kombinatsiyasi jadvalda bo‘lmasa, shu ekinning eng yaqin GMR qatori olinadi va bu taxminiy moslashuv deb ko‘rsatiladi. Ekin o‘zgartirilganda suv limiti,
 sug‘orish soni va muddati, ET sof talabi, mavjud suv, suv holati hamda muqobil
 ekinlar faqat shu qism uchun qayta hisoblanadi. Natijadagi ikki qismni GeoJSON
 ssenariysi sifatida yuklab olish mumkin.

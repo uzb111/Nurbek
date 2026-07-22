@@ -15,13 +15,13 @@ Yangilangan sana: 2026-07-21. Ushbu fayl dashboard hisoblarining amaldagi yagona
 
 Bir dala bir nechta tuproq/GMR qismidan iborat bo‘lishi mumkin. Ekin tanlanganda har bir qism alohida hisoblanadi:
 
-`Need_component = Area_component_ha × PNG_norm(zone, GMR, crop)`
+`Need_component = Area_component_ha × PNG_norm(GMR, crop)`
 
 `Need_field = Σ Need_component`
 
 `Weighted_norm_field = Need_field / Area_field_ha`
 
-PNG jadvalida aynan shu GMR qatori bo‘lmasa, shu zona va ekin ichidagi eng yaqin GMR qatori olinadi. UI buni `yaqin GMR qoidasi` deb belgilaydi; bu taxmin yashirilmaydi.
+PNG jadvalida aynan shu GMR qatori bo‘lmasa, shu ekin uchun eng yaqin GMR qatori olinadi. Bir GMR–ekin kombinatsiyasi bir nechta normativ qatorda uchrasa, suv talabini kam baholamaslik uchun eng yuqori mavsumiy norma olinadi. UI yaqin GMR ishlatilganini alohida belgilaydi.
 
 ## 3. Rasmiy limitdan dala ulushi
 
@@ -98,7 +98,11 @@ Real ET mavjud bo‘lsa:
 
 `Water_score = 0.70 × Norm_coverage + 0.30 × ET_coverage`
 
+`Texture_score = 0.50 × score(Tm1) + 0.30 × score(Tm2) + 0.20 × score(Tm3)`
+
 `Suitability = 0.45 × Water_score + 0.30 × Bonitet_score + 0.15 × Texture_score + 0.10 × Climate_score`
+
+`Tm1`, `Tm2`, `Tm3` mos ravishda 0–30, 30–100 va 100–200 sm tuproq qatlamidir. Bo‘z/cho‘l zona atributi hisobdan chiqarildi. GMR–ekin uchun normativ jadvalda takror satr bo‘lsa, konservativ eng yuqori mavsumiy norma ishlatiladi.
 
 Muhim tuzatish: eski kod `Real_ET / norma` nisbatini ball qilgan va ET talabi kattalashgan sari ballni oshirgan. Endi mavjud suv real ET talabiga bo‘linadi.
 
@@ -114,7 +118,7 @@ Endi tuproq/GMR tarkibi ota daladagi foizni ikki qismga bir xil ko‘chirmaydi. 
 
 `Component_area_part = Area(intersection(Component_geometry, Part_geometry))`
 
-Kesishgan komponent maydonlari dala atribut maydoniga normallashtiriladi. Dominant GMR, Tm1, zona, maydon-vaznli bonitet va dominant suv yo‘li har qism uchun qayta olinadi. Fazoviy qamrov 70% dan past bo‘lsa proportional fallback ishlaydi va statusda alohida belgilanadi.
+Kesishgan komponent maydonlari dala atribut maydoniga normallashtiriladi. Dominant GMR, `Tm1`, `Tm2`, `Tm3`, maydon-vaznli bonitet, `SS` sizot chuqurligi va dominant suv yo‘li har qism uchun qayta olinadi. Fazoviy qamrov 70% dan past bo‘lsa proportional fallback ishlaydi va statusda alohida belgilanadi.
 
 Split qismda faqat ekin foydalanuvchi tomonidan o‘zgartiriladi; suv normasi, real ET hajmi, limit ulushi, yo‘l yo‘qotishi, suv holati va tavsiya avtomatik qayta hisoblanadi. Split va ekin tanlovi sahifa yangilanganda saqlanmaydi.
 
@@ -134,7 +138,7 @@ Haqiqiy o‘lchov bo‘lmagan qismlar:
 - kanal bo‘yicha 1,5%/bosqich yo‘qotish;
 - amalda berilgan suv va dalada ishlatilgan suvning boshlang‘ich 88%/82% qiymatlari;
 - GMRga bog‘langan sizot hissasi;
-- ekin bonitet minimumlari, Tm1 va issiqlik profillari;
+- ekin bonitet minimumlari, uch qatlamli mexanik tarkib va issiqlik profillari;
 - blok atributidagi yo‘lning haqiqiy oqim yo‘nalishi va suv berish navbati.
 
 Shu sabab `Delivered_field` o‘lchangan suv emas, aniq yozilgan ssenariy natijasidir. Real sarf, zatvor, oqim yo‘nalishi va navbat ma’lumoti kelganda formuladagi taxminiy koeffitsiyentlar almashtiriladi.

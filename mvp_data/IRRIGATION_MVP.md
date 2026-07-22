@@ -1,4 +1,6 @@
-# Sug‘orish normasi — MVP modul natijasi
+# Sug‘orish normasi — tarixiy modul natijasi
+
+> Bu hujjat dastlabki zona-proksi bosqichini arxiv sifatida saqlaydi. Amaldagi dashboard va tavsiya algoritmida bo‘z/cho‘l zonasi ishlatilmaydi; joriy metodika `FORMULA_ALGORITHM_AUDIT.md` va `RECOMMENDATION_METHOD.md` fayllarida.
 
 ## Yaratilgan fayllar
 

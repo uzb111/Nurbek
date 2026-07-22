@@ -1,5 +1,7 @@
 # Smart Agriculture MVP — product, data va texnik roadmap
 
+> Eslatma: bu dastlabki reja tarixiy qarorlarni ham saqlaydi. Bo‘z/cho‘l zona-proksi talabi 2026-07-22 auditida bekor qilingan; amaldagi formula `FORMULA_ALGORITHM_AUDIT.md` faylida.
+
 ## 1. MVPning bitta aniq va’dasi
 
 Foydalanuvchi xaritada dalani tanlaydi va tizim quyidagilarni tushunarli

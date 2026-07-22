@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-19T06:03:05.410Z",
+  "generated_at": "2026-07-22T05:00:06.711Z",
   "source_features": "mvp_data/geojson/fields_demo_mvp.geojson",
   "totals": {
     "polygons": 13231,
@@ -13,7 +13,6 @@
     "estimated_water_m3": 265255142.2805167,
     "crop_proxy_polygons": 2518,
     "gmr_proxy_polygons": 1757,
-    "zone_estimated_polygons": 10364,
     "bonitet_missing_polygons": 1080,
     "small_polygons_under_01ha": 596,
     "long_crop_proxy_over_500m": 95,
@@ -122,20 +121,6 @@
       "polygons": 15,
       "area_ha": 45.753305930932406,
       "water_m3": 538391.2970252163
-    }
-  ],
-  "zones": [
-    {
-      "label": "boz",
-      "polygons": 12993,
-      "area_ha": 60356.65935569306,
-      "water_m3": 315300998.9359001
-    },
-    {
-      "label": "chol",
-      "polygons": 238,
-      "area_ha": 1565.4648960634297,
-      "water_m3": 10403310.412460504
     }
   ],
   "gmrs": [

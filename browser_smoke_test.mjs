@@ -103,7 +103,7 @@ try {
     geoLayer.eachLayer((layer) => { if (layer.feature === target) targetLayer = layer; });
     selectField(target, targetLayer);
     return {
-      confidence: document.querySelector("#field-confidence").textContent,
+      soilProfileSummary: document.querySelector("#field-soil-profile-summary").textContent,
       title: document.querySelector("#route-report-title").textContent,
       subtitle: document.querySelector("#route-report-subtitle").textContent,
       legend: document.querySelector(".route-chart-legend").textContent,
@@ -113,11 +113,11 @@ try {
       popup: popupHtml(target.properties),
     };
   })()`);
-  if (!/^\d{1,3}$/.test(routeUi.confidence)) throw new Error("Zona ishonchliligi halqadan chiqadigan kasr son bo‘lib qoldi");
+  if (!routeUi.soilProfileSummary.includes("0–30 sm") || !routeUi.soilProfileSummary.includes("100–200 sm") || !routeUi.soilProfileSummary.includes("sizot")) throw new Error("Dala pasportida uch qatlamli tuproq profili yoki sizot ko‘rinmadi");
   if (!routeUi.title.includes("dalaga suv yetadi") || !routeUi.subtitle.includes("tarmoq bo‘g‘ini")) throw new Error("Suv yo‘li sarlavhasi oddiy tilda emas");
   if (!routeUi.legend.includes("Har bo‘g‘indan keyin qolgan suv") || routeUi.chartText.includes("LVL")) throw new Error("Route chart eski LVL terminlaridan tozalanmadi");
   if (!routeUi.explanation.includes("Grafikni qanday o‘qish kerak") || !routeUi.chartLabel) throw new Error("Route chart izohi yoki accessibility yorlig‘i yo‘q");
-  if (!routeUi.popup.includes("Bonitet:") || !routeUi.popup.includes("ball")) throw new Error("Dala popupida bonitet balli yo‘q");
+  if (!routeUi.popup.includes("Bonitet:") || !routeUi.popup.includes("ball") || !routeUi.popup.includes("0–30 / 30–100 / 100–200") || routeUi.popup.includes("Zona:")) throw new Error("Dala popupida bonitet/tuproq profili yo‘q yoki zona hali ko‘rinmoqda");
   const layerControlUi = await evaluate(`(async () => {
     const control = document.querySelector(".leaflet-control-layers");
     const initiallyCollapsed = !control.classList.contains("leaflet-control-layers-expanded");

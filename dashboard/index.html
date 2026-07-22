@@ -6,7 +6,7 @@
     <title>AgroTahlil — Yer va suv tahlili</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2317663b'/%3E%3Cpath d='M16 42C26 39 37 29 45 15c3 19-7 31-23 34M18 47c7-11 14-17 24-23' fill='none' stroke='%23fff' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="./styles.css?v=20260722-district1" />
+    <link rel="stylesheet" href="./styles.css?v=20260722-soilprofile1" />
   </head>
   <body>
     <div class="app-shell">
@@ -154,10 +154,6 @@
               <div class="card-heading"><div><span class="eyebrow">MA’LUMOT ISHONCHLILIGI</span><h2>Hisob manbasi</h2></div></div>
               <div class="donut-layout"><div class="donut" id="quality-donut"><strong id="quality-percent">—</strong><small>manba asosida</small></div><div class="legend-list" id="quality-legend"></div></div>
             </article>
-            <article class="card chart-card">
-              <div class="card-heading"><div><span class="eyebrow">SUG‘ORISH ZONASI</span><h2>Bo‘z va cho‘l hududi</h2></div></div>
-              <div class="simple-bars" id="zone-bars"></div>
-            </article>
           </section>
 
           <section class="weather-card card overview-weather" id="weather">
@@ -304,7 +300,7 @@
               <div class="card-heading compact"><div><span class="eyebrow">DALA PASPORTI</span><h2 id="field-title">Dalani tanlang</h2></div><span class="status-pill neutral" id="field-status">Kutilmoqda</span></div>
               <div class="empty-state" id="field-empty"><div class="empty-icon">◇</div><h3>Xaritadan poligon tanlang</h3><p>Ekin, GMR, sug‘orish normasi, formula va dala xulosasi shu yerda ko‘rinadi.</p></div>
               <div id="field-details" hidden>
-                <div class="field-score-row"><div class="confidence-ring" id="confidence-ring"><span id="field-confidence">—</span><small>%</small></div><div><span class="field-meta-label">ZONA ISHONCHLILIGI</span><strong id="field-zone">—</strong><p id="field-zone-note">—</p></div></div>
+                <div class="field-score-row"><div class="soil-profile-ring"><span>0–200</span><small>sm</small></div><div><span class="field-meta-label">UCH QATLAMLI TUPROQ PROFILI</span><strong id="field-soil-dominant">—</strong><p id="field-soil-profile-summary">—</p></div></div>
                 <dl class="facts-grid"><div><dt>Ekin</dt><dd id="field-crop">—</dd></div><div><dt>Maydon</dt><dd id="field-area">—</dd></div><div><dt>GMR</dt><dd id="field-gmr">—</dd></div><div><dt>Tuproq boniteti</dt><dd id="field-bonitet">—</dd></div></dl>
                 <section class="soil-composition-card"><div class="section-label-row"><span class="eyebrow">DALA ICHIDAGI TUPROQ VA GMR QISMLARI</span><span class="mini-status" id="field-source-parts">—</span></div><div class="soil-component-list" id="field-soil-components"></div></section>
                 <section class="water-plan"><div class="section-label-row"><span class="eyebrow">MAVSUMIY SUV REJASI</span><span id="field-norm-status" class="mini-status">—</span></div><strong class="water-total" id="field-water">—</strong><span class="water-unit">m³ mavsum uchun</span><div class="water-breakdown"><div><span>Norma</span><strong id="field-norm">—</strong></div><div><span>Sug‘orishlar</span><strong id="field-count">—</strong></div><div><span>Muddat</span><strong id="field-window">—</strong></div></div><code class="formula-line" id="field-season-formula">—</code></section>
@@ -352,6 +348,6 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="./app.js?v=20260722-district1"></script>
+    <script src="./app.js?v=20260722-soilprofile1"></script>
   </body>
 </html>

@@ -6,10 +6,10 @@ Tizim faqat quyidagi 6 ekindan foydalanadi: Paxta, Beda, Makkajo‘xori, Sabzavo
 
 - 45% suv: rasmiy suv hajmi, kanal yo‘li samaradorligi va real ET;
 - 30% tuproq boniteti;
-- 15% mexanik tarkib (Tm1);
+- 15% uch qatlamli mexanik tarkib: `Tm1` 50%, `Tm2` 30%, `Tm3` 20%;
 - 10% Open-Meteo ob-havo sharoiti.
 
-Suv normasi dala ichidagi barcha GMR/tuproq qismlari uchun PNG qoidalari bo‘yicha alohida hisoblanadi. Real ET mavjud bo‘lsa suv skorining 30% qismi real ET bilan, 70% qismi limit va tarmoq samaradorligi bilan baholanadi.
+Suv normasi dala ichidagi barcha GMR/tuproq qismlari uchun PNG qoidalari bo‘yicha alohida hisoblanadi. Bo‘z/cho‘l zonasi modeldan chiqarilgan. Bir GMR–ekin uchun PNGda bir nechta satr bo‘lsa, suv talabini kam baholamaslik uchun eng yuqori mavsumiy norma olinadi. Real ET mavjud bo‘lsa suv skorining 30% qismi real ET bilan, 70% qismi limit va tarmoq samaradorligi bilan baholanadi.
 
 `Norm_coverage = mavjud_m3ga / PNG_norm_m3ga × 100`
 
