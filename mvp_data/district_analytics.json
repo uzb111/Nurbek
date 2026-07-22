@@ -1,0 +1,313 @@
+{
+  "generated_at": "2026-07-22T04:36:20.411Z",
+  "scope": "Kasbi tumani, tuman kodi 1803",
+  "sources": [
+    "fields_merged_manual.geojson",
+    "tuproq_mexanik.geojson",
+    "sizot_suvi.geojson",
+    "kanal.geojson",
+    "zovur.geojson"
+  ],
+  "bonitet": {
+    "average": 55,
+    "minimum": 33,
+    "maximum": 81,
+    "source_polygons": 758,
+    "covered_area_ha": 54052.7
+  },
+  "field_area": {
+    "total_ha": 61922.1,
+    "fields": 10710,
+    "minimum_ha": 0.01,
+    "maximum_ha": 113.9,
+    "median_ha": 3.3
+  },
+  "soil_profile": [
+    {
+      "property": "Tm1",
+      "depth": "0–30 sm",
+      "dominant": {
+        "code": 3,
+        "label": "Yengil qumoq",
+        "area_ha": 24416.7,
+        "share_pct": 45.2
+      },
+      "distribution": [
+        {
+          "code": 3,
+          "label": "Yengil qumoq",
+          "area_ha": 24416.7,
+          "share_pct": 45.2
+        },
+        {
+          "code": 4,
+          "label": "O‘rta qumoq",
+          "area_ha": 20340,
+          "share_pct": 37.6
+        },
+        {
+          "code": 2,
+          "label": "Qumloq",
+          "area_ha": 4369.4,
+          "share_pct": 8.1
+        },
+        {
+          "code": 5,
+          "label": "Og‘ir qumoq",
+          "area_ha": 2721.8,
+          "share_pct": 5
+        },
+        {
+          "code": 6,
+          "label": "Gilli",
+          "area_ha": 1955.6,
+          "share_pct": 3.6
+        },
+        {
+          "code": 1,
+          "label": "Qumli",
+          "area_ha": 249.2,
+          "share_pct": 0.5
+        }
+      ]
+    },
+    {
+      "property": "Tm2",
+      "depth": "30–100 sm",
+      "dominant": {
+        "code": 3,
+        "label": "Yengil qumoq",
+        "area_ha": 22006.7,
+        "share_pct": 40.7
+      },
+      "distribution": [
+        {
+          "code": 3,
+          "label": "Yengil qumoq",
+          "area_ha": 22006.7,
+          "share_pct": 40.7
+        },
+        {
+          "code": 4,
+          "label": "O‘rta qumoq",
+          "area_ha": 19652.8,
+          "share_pct": 36.4
+        },
+        {
+          "code": 2,
+          "label": "Qumloq",
+          "area_ha": 9072.5,
+          "share_pct": 16.8
+        },
+        {
+          "code": 6,
+          "label": "Gilli",
+          "area_ha": 1912.2,
+          "share_pct": 3.5
+        },
+        {
+          "code": 5,
+          "label": "Og‘ir qumoq",
+          "area_ha": 991.2,
+          "share_pct": 1.8
+        },
+        {
+          "code": 1,
+          "label": "Qumli",
+          "area_ha": 417.2,
+          "share_pct": 0.8
+        }
+      ]
+    },
+    {
+      "property": "Tm3",
+      "depth": "100–200 sm",
+      "dominant": {
+        "code": 4,
+        "label": "O‘rta qumoq",
+        "area_ha": 15045.2,
+        "share_pct": 27.8
+      },
+      "distribution": [
+        {
+          "code": 4,
+          "label": "O‘rta qumoq",
+          "area_ha": 15045.2,
+          "share_pct": 27.8
+        },
+        {
+          "code": 2,
+          "label": "Qumloq",
+          "area_ha": 12127.8,
+          "share_pct": 22.4
+        },
+        {
+          "code": 3,
+          "label": "Yengil qumoq",
+          "area_ha": 11761.9,
+          "share_pct": 21.8
+        },
+        {
+          "code": 5,
+          "label": "Og‘ir qumoq",
+          "area_ha": 8568.9,
+          "share_pct": 15.9
+        },
+        {
+          "code": 1,
+          "label": "Qumli",
+          "area_ha": 5931.2,
+          "share_pct": 11
+        },
+        {
+          "code": 6,
+          "label": "Gilli",
+          "area_ha": 617.6,
+          "share_pct": 1.1
+        }
+      ]
+    }
+  ],
+  "groundwater": {
+    "period": "2025",
+    "district": "Kasbi",
+    "stations": 434,
+    "measurements": 15618,
+    "excluded_outliers": 6,
+    "minimum_mm": 1200,
+    "average_mm": 4451,
+    "maximum_mm": 9530,
+    "bands": [
+      {
+        "label": "1 000–2 999 mm",
+        "measurements": 1808,
+        "share_pct": 11.6
+      },
+      {
+        "label": "3 000–4 999 mm",
+        "measurements": 8815,
+        "share_pct": 56.4
+      },
+      {
+        "label": "5 000 mm va chuqur",
+        "measurements": 4995,
+        "share_pct": 32
+      }
+    ]
+  },
+  "gmr": [
+    {
+      "gmr": "III",
+      "fields": 6640,
+      "area_ha": 35358.9,
+      "share_pct": 57.1
+    },
+    {
+      "gmr": "V",
+      "fields": 1491,
+      "area_ha": 11142.6,
+      "share_pct": 18
+    },
+    {
+      "gmr": "VI",
+      "fields": 1500,
+      "area_ha": 9077.8,
+      "share_pct": 14.7
+    },
+    {
+      "gmr": "II",
+      "fields": 594,
+      "area_ha": 2907.5,
+      "share_pct": 4.7
+    },
+    {
+      "gmr": "I",
+      "fields": 361,
+      "area_ha": 2219.7,
+      "share_pct": 3.6
+    },
+    {
+      "gmr": "IV",
+      "fields": 108,
+      "area_ha": 1080.8,
+      "share_pct": 1.7
+    },
+    {
+      "gmr": "IX",
+      "fields": 16,
+      "area_ha": 134.8,
+      "share_pct": 0.2
+    }
+  ],
+  "infrastructure": {
+    "canals": {
+      "features": 1615,
+      "length_km": 3309.8
+    },
+    "drains": {
+      "features": 64,
+      "length_km": 769.3
+    },
+    "groundwater_stations": 434
+  },
+  "recommendation": {
+    "method": "45% suv + 30% bonitet + 15% mexanik tarkib + 10% ob-havo",
+    "total_fields": 10710,
+    "total_area_ha": 61922.12425175663,
+    "crops": [
+      {
+        "group": "winter_grain",
+        "label": "Bug‘doy",
+        "fields": 5804,
+        "area_ha": 34803.2,
+        "color": "#1c7ed6",
+        "share_pct": 56.2
+      },
+      {
+        "group": "cotton",
+        "label": "Paxta",
+        "fields": 4045,
+        "area_ha": 22596.9,
+        "color": "#168951",
+        "share_pct": 36.49
+      },
+      {
+        "group": "maize",
+        "label": "Makkajo‘xori",
+        "fields": 780,
+        "area_ha": 4081.5,
+        "color": "#f0ad22",
+        "share_pct": 6.59
+      },
+      {
+        "group": "melons",
+        "label": "Poliz",
+        "fields": 58,
+        "area_ha": 388.1,
+        "color": "#ef7f33",
+        "share_pct": 0.63
+      },
+      {
+        "group": "vegetables",
+        "label": "Sabzavot",
+        "fields": 11,
+        "area_ha": 47.3,
+        "color": "#e84d72",
+        "share_pct": 0.08
+      },
+      {
+        "group": "alfalfa",
+        "label": "Beda",
+        "fields": 12,
+        "area_ha": 5,
+        "color": "#7c62cc",
+        "share_pct": 0.01
+      }
+    ]
+  },
+  "crop_assignment": {
+    "assigned_fields": 0,
+    "unassigned_fields": 10710,
+    "status": "Ekinlar boshlang‘ich holatda kiritilmagan"
+  }
+}

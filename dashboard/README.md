@@ -1,14 +1,12 @@
 # AgroTahlil dashboard
 
-Rahbariyat uchun interfeys uch qismga ajratilgan:
+Rahbariyat uchun interfeys ikki qismga ajratilgan:
 
-1. **Umumiy dashboard** — xaritasiz, tez ochiladigan KPI, diagramma, Open-Meteo
-   ob-havosi va 20 ta avtomatik xulosa.
-2. **Tuman suv balansi** — limit, amalda berilgan, dalalarda ishlatilgan suv,
-   ET sarfi, tarmoq yo‘qotishi va defitsit. Limit va sarf qiymatlari ekranda
-   tahrirlanadi.
-3. **Dalalar xaritasi** — GeoJSON xaritasi, qidiruv, filtr, dala pasporti,
-   mavsumiy formula va 7 kunlik hisob.
+1. **Umumiy tahlil** — xaritasiz, tez ochiladigan suv balansi, Real ET,
+   Open-Meteo, bonitet, uch chuqurlikdagi mexanik tarkib, sizot suvi, GMR,
+   ekin tavsiyasi hamda kanal-zovur qamrovi.
+2. **Dalalar xaritasi** — GeoJSON xaritasi, dala pasporti, ekin kiritish,
+   avtomatik tavsiya, split va kanaldan dalagacha suv yo‘li hisoboti.
 
 ## Ishga tushirish
 
@@ -25,6 +23,17 @@ Dashboard agregatini qayta qurish:
 ```powershell
 node .\build_dashboard_summary.mjs
 ```
+
+Tuman tuproq, sizot, GMR, ekin tavsiyasi va infratuzilma agregatini qayta qurish:
+
+```powershell
+node .\build_district_analytics.mjs
+```
+
+Bonitet tuproq poligoni maydoniga vaznlanadi. `Tm1`, `Tm2`, `Tm3` mos ravishda
+0–30, 30–100 va 100–200 sm qatlamlardir. Kasbi monitoring nuqtalaridagi 2025
+sizot chuqurligi metrdan millimetrga o‘tkaziladi; 15 metrdan katta aniq kiritish
+xatolari yig‘ma statistikadan chiqarilib, soni auditda saqlanadi.
 
 Open-Meteo zaxira nusxasini yangilash:
 

@@ -56,7 +56,7 @@ try {
   };
   await command("Runtime.enable");
   for (let attempt = 0; attempt < 120; attempt += 1) {
-    if (await evaluate("typeof fullData !== 'undefined' && Boolean(fullData?.features?.length === 10710 && districtBalance && irrigationRules.length && actualEtMetadata && weatherLoadComplete)")) break;
+    if (await evaluate("typeof fullData !== 'undefined' && Boolean(fullData?.features?.length === 10710 && districtBalance && districtAnalytics && irrigationRules.length && actualEtMetadata && weatherLoadComplete)")) break;
     if (attempt === 119) throw new Error("Dashboard ma’lumotlari 30 soniyada tayyor bo‘lmadi");
     await delay(250);
   }
@@ -67,6 +67,7 @@ try {
     return {
       assigned: fullData.features.filter((feature) => feature.properties.crop_group_mvp).length,
       crops: [...new Set(fullData.features.map((feature) => feature.properties.crop_group_mvp).filter(Boolean))].sort(),
+      cropCounts: Object.fromEntries(PNG_CROP_ORDER.map((group) => [group, fullData.features.filter((feature) => feature.properties.crop_group_mvp === group).length])),
       cropAreas: Object.fromEntries(PNG_CROP_ORDER.map((group) => [group, fullData.features.filter((feature) => feature.properties.crop_group_mvp === group).reduce((total, feature) => total + Number(feature.properties.maydoni || 0), 0)])),
       denominator: currentDistrictNeed(),
       sourceTotal,
@@ -75,11 +76,21 @@ try {
       used: Number(document.querySelector("#input-water-used").value) * 1e6,
       realEt: actualEtMetadata.official_period_et_m3,
       periodLabel: document.querySelector("#balance-period").textContent,
+      assignmentLabel: document.querySelector("#district-assignment-label").textContent,
+      districtAnalytics: {
+        bonitet: document.querySelector("#district-bonitet-average").textContent,
+        soilLayers: document.querySelectorAll("#district-soil-profile .soil-depth-row").length,
+        groundwater: document.querySelector("#district-groundwater-average").textContent,
+        gmrRows: document.querySelectorAll("#district-gmr-distribution > div").length,
+        recommendationRows: document.querySelectorAll("#district-recommendation-bars > div").length,
+        canalCount: document.querySelector("#district-canal-count").textContent,
+      },
     };
   })()`);
   console.log(JSON.stringify({ checkpoint: "recommendation", recommendation }, null, 2));
   if (recommendation.assigned !== 10710 || recommendation.crops.length !== 6) throw new Error("Tavsiya barcha dalaga 6 ekinni joylashtirmadi");
   if (recommendation.cropAreas.alfalfa > 5.000001) throw new Error(`Beda tavsiyasi 5 ga limitdan oshdi: ${recommendation.cropAreas.alfalfa}`);
+  if (recommendation.assignmentLabel.replace(/\D/g, "") !== "1071010710" || recommendation.districtAnalytics.soilLayers !== 3 || recommendation.districtAnalytics.gmrRows !== 7 || recommendation.districtAnalytics.recommendationRows !== 6) throw new Error("Tuman analitikasi yoki ekin kiritilganlik holati to‘liq render bo‘lmadi");
   if (recommendation.denominator.mode !== "dynamic") throw new Error("Tavsiya tugagach tuman talabi dinamik bo‘lmadi");
   if (Math.abs(recommendation.sourceTotal - recommendation.officialLimit) > 1) throw new Error("Dala limit ulushlari rasmiy limitga yig‘ilmadi");
   if (Math.abs(recommendation.supplied - recommendation.officialLimit * .88) > 10000) throw new Error("Boshlang‘ich berilgan suv rasmiy limitning 88% iga teng emas");

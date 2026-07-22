@@ -6,7 +6,7 @@
     <title>AgroTahlil — Yer va suv tahlili</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2317663b'/%3E%3Cpath d='M16 42C26 39 37 29 45 15c3 19-7 31-23 34M18 47c7-11 14-17 24-23' fill='none' stroke='%23fff' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="./styles.css?v=20260721-executive1" />
+    <link rel="stylesheet" href="./styles.css?v=20260722-district1" />
   </head>
   <body>
     <div class="app-shell">
@@ -65,9 +65,9 @@
 
           <section class="concept-bottom-grid">
             <article class="concept-card concept-small-card">
-              <div class="concept-card-head"><div><span class="section-index">03 · YER RESURSLARI</span><h2>Ekinlar taqsimoti</h2></div></div>
+              <div class="concept-card-head"><div><span class="section-index">03 · YER RESURSLARI</span><h2>Manbadagi ekinlar <small>tarixiy qatlam</small></h2></div></div>
               <div class="crop-donut-layout" id="premium-crop-distribution"><div class="chart-loading">Hisoblanmoqda…</div></div>
-              <div class="concept-card-foot quiet-foot"><strong id="premium-crop-count">—</strong><span>GDB manba taqsimoti</span></div>
+              <div class="concept-card-foot quiet-foot"><strong id="premium-crop-count">—</strong><span>GDB boshlang‘ich qatlam</span></div>
             </article>
             <article class="concept-card concept-small-card">
               <div class="concept-card-head"><div><span class="section-index">04 · SUV ISTE’MOLI</span><h2>Real ET <small>oylik dinamikasi</small></h2></div><span>mln m³</span></div>
@@ -84,6 +84,51 @@
               <div class="management-list" id="premium-management-summary"><div class="chart-loading">Xulosa tayyorlanmoqda…</div></div>
               <div class="concept-card-foot"><span>Formula asosidagi natijalar</span><span>Tavsiya etilgan choralar →</span></div>
             </article>
+          </section>
+
+          <section class="district-intelligence" aria-labelledby="district-intelligence-title">
+            <header class="intelligence-heading">
+              <div><span class="executive-kicker">TUMAN KESIMIDAGI KENGAYTIRILGAN TAHLIL</span><h2 id="district-intelligence-title">Yer, tuproq va ekin salohiyati</h2></div>
+              <span class="intelligence-source"><i></i> GDB · 2025 MONITORING</span>
+            </header>
+            <div class="intelligence-grid">
+              <article class="concept-card intelligence-card soil-score-card">
+                <div class="concept-card-head"><div><span class="section-index">05 · TUPROQ SIFATI</span><h2>Bonitet va dala o‘lchami</h2></div><span>758 tuproq poligoni</span></div>
+                <div class="bonitet-overview">
+                  <div class="bonitet-ring"><span id="district-bonitet-average">—</span><small>o‘rtacha ball</small></div>
+                  <div class="bonitet-range"><div><span>Eng past</span><strong id="district-bonitet-min">—</strong><small>ball</small></div><div><span>Eng baland</span><strong id="district-bonitet-max">—</strong><small>ball</small></div></div>
+                </div>
+                <div class="field-size-strip"><div><span>Eng kichik dala</span><strong id="district-field-min">—</strong></div><div><span>Median dala</span><strong id="district-field-median">—</strong></div><div><span>Eng katta dala</span><strong id="district-field-max">—</strong></div></div>
+                <p class="analytics-note" id="district-bonitet-note">Tuproq boniteti maydon bo‘yicha vaznlanmoqda…</p>
+              </article>
+
+              <article class="concept-card intelligence-card soil-profile-card">
+                <div class="concept-card-head"><div><span class="section-index">06 · TUPROQ PROFILI</span><h2>Mexanik tarkib</h2></div><span>maydon ulushi</span></div>
+                <div class="soil-depth-list" id="district-soil-profile"><div class="chart-loading">Tuproq qatlamlari hisoblanmoqda…</div></div>
+                <div class="texture-key" id="district-texture-key"></div>
+              </article>
+
+              <article class="concept-card intelligence-card hydro-card">
+                <div class="concept-card-head"><div><span class="section-index">07 · GIDROGEOLOGIYA</span><h2>Sizot suvi va GMR</h2></div><span>2025</span></div>
+                <div class="groundwater-hero"><div><span>O‘rtacha sizot chuqurligi</span><strong id="district-groundwater-average">—</strong><small>mm · yer yuzasidan</small></div><div class="groundwater-range"><span id="district-groundwater-min">—</span><i></i><span id="district-groundwater-max">—</span></div></div>
+                <div class="groundwater-bands" id="district-groundwater-bands"></div>
+                <div class="gmr-heading"><div><strong>Gidromodul rayonlashtirish kartasi</strong><span id="district-gmr-note">—</span></div></div>
+                <div class="gmr-distribution" id="district-gmr-distribution"></div>
+              </article>
+
+              <article class="concept-card intelligence-card recommendation-overview-card">
+                <div class="concept-card-head"><div><span class="section-index">08 · OPTIMAL JOYLASHTIRISH</span><h2>Ekin tavsiyasi</h2></div><span>45 / 30 / 15 / 10 metodika</span></div>
+                <div class="recommendation-layout"><div class="recommendation-summary"><strong id="district-recommendation-area">—</strong><span>ga maydon uchun 6 xil ekin</span><p>Suv ta’minoti, bonitet, mexanik tarkib va ob-havo birgalikda baholangan.</p></div><div class="recommendation-bars" id="district-recommendation-bars"></div></div>
+                <div class="assignment-status"><div><span>Ekin kiritilganlik holati</span><strong id="district-assignment-label">0 / — dala</strong></div><div class="assignment-track"><i id="district-assignment-bar"></i></div><small id="district-assignment-note">Ekinlar boshlang‘ich holatda kiritilmagan; tavsiya xaritada qo‘llangach yangilanadi.</small></div>
+              </article>
+
+              <article class="concept-card intelligence-card infrastructure-card">
+                <div class="concept-card-head"><div><span class="section-index">09 · TAHLIL QAMROVI</span><h2>Yer va suv infratuzilmasi</h2></div><span>GDB</span></div>
+                <div class="infrastructure-total"><strong id="district-land-area">—</strong><span>ga jami ekin yeri</span><small id="district-field-count">— ta mantiqiy dala</small></div>
+                <div class="infrastructure-metrics"><div><span>Kanallar</span><strong id="district-canal-count">—</strong><small id="district-canal-length">— km</small></div><div><span>Zovurlar</span><strong id="district-drain-count">—</strong><small id="district-drain-length">— km</small></div><div><span>Sizot kuzatuvi</span><strong id="district-station-count">—</strong><small>monitoring nuqtasi</small></div></div>
+                <p class="analytics-note">Uzunliklar GDBdagi loyiha qamrovi bo‘yicha hisoblangan; zovurlar sug‘orish suvi bermaydi, sizot suvini chiqaradi.</p>
+              </article>
+            </div>
           </section>
 
           <details class="concept-methodology" hidden aria-hidden="true">
@@ -307,6 +352,6 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="./app.js?v=20260721-executive1"></script>
+    <script src="./app.js?v=20260722-district1"></script>
   </body>
 </html>

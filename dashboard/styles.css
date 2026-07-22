@@ -415,3 +415,63 @@ body { background:radial-gradient(circle at 80% 0,rgba(179,218,190,.18),transpar
   .concept-kpi p strong { font-size:23px; }
   .concept-kpi small { font-size:7px; }
 }
+
+/* District-wide soil, groundwater, crop and infrastructure intelligence */
+.district-intelligence { margin-top:18px; }
+.intelligence-heading { min-height:66px; display:flex; align-items:center; justify-content:space-between; gap:18px; padding:0 2px; }
+.intelligence-heading > div { display:grid; gap:4px; }
+.intelligence-heading h2 { margin:0; color:var(--executive-ink); font-size:21px; font-weight:775; letter-spacing:-.65px; }
+.intelligence-source { display:flex; align-items:center; gap:7px; padding:7px 10px; border:1px solid #dce5df; border-radius:999px; background:#fbfdfb; color:#617169; font-size:8px; font-weight:800; letter-spacing:.8px; }
+.intelligence-source i { width:5px; height:5px; border-radius:50%; background:#168951; box-shadow:0 0 0 3px rgba(22,137,81,.09); }
+.intelligence-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; align-items:stretch; }
+.intelligence-card { min-height:398px; }
+.analytics-note { margin:auto 17px 15px; color:#748079; font-size:8px; line-height:1.55; }
+
+.bonitet-overview { display:grid; grid-template-columns:150px 1fr; gap:18px; align-items:center; padding:13px 20px 17px; }
+.bonitet-ring { --bonitet:0; width:132px; height:132px; display:grid; place-content:center; border-radius:50%; text-align:center; background:radial-gradient(circle closest-side,#fff 72%,transparent 74%),conic-gradient(#147a49 calc(var(--bonitet)*1%),#e5ede8 0); box-shadow:inset 0 0 0 1px rgba(18,98,57,.04); }
+.bonitet-ring span { color:#123c28; font-size:36px; font-weight:790; letter-spacing:-1.6px; line-height:1; }
+.bonitet-ring small { margin-top:5px; color:#6d7c74; font-size:8px; font-weight:700; }
+.bonitet-range { display:grid; gap:9px; }
+.bonitet-range > div { min-height:55px; display:grid; grid-template-columns:1fr auto; grid-template-rows:auto auto; align-items:center; padding:10px 12px; border:1px solid #e3e9e5; border-radius:8px; background:#fbfcfb; }
+.bonitet-range span { color:#6d7c74; font-size:8px; }.bonitet-range strong { grid-row:1 / 3; grid-column:2; color:#173a29; font-size:24px; letter-spacing:-.7px; }.bonitet-range small { color:#87918b; font-size:7px; }
+.field-size-strip { display:grid; grid-template-columns:repeat(3,1fr); margin:0 17px 13px; border:1px solid #e2e8e4; border-radius:8px; overflow:hidden; }
+.field-size-strip > div { min-height:62px; display:grid; align-content:center; gap:4px; padding:10px 11px; border-right:1px solid #e5eae7; }
+.field-size-strip > div:last-child { border-right:0; }.field-size-strip span { color:#77827c; font-size:7px; }.field-size-strip strong { color:#263e32; font-size:13px; font-variant-numeric:tabular-nums; }
+
+.soil-depth-list { display:grid; gap:14px; padding:7px 17px 10px; }
+.soil-depth-row { display:grid; gap:6px; }
+.soil-depth-heading { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }.soil-depth-heading strong { color:#254036; font-size:10px; }.soil-depth-heading span { color:#167447; font-size:8px; font-weight:720; }
+.soil-profile-track { height:11px; display:flex; overflow:hidden; border-radius:999px; background:#edf1ee; }.soil-profile-track i { height:100%; display:block; min-width:1px; }
+.soil-depth-row p { margin:0; color:#79847e; font-size:7px; line-height:1.45; }
+.texture-key { display:flex; flex-wrap:wrap; gap:8px 11px; margin:8px 17px 15px; padding-top:11px; border-top:1px solid #e8ece9; }
+.texture-key span { display:flex; align-items:center; gap:5px; color:#66746c; font-size:7px; }.texture-key i { width:7px; height:7px; border-radius:2px; }
+
+.groundwater-hero { display:flex; align-items:center; justify-content:space-between; gap:15px; margin:7px 17px 10px; padding:13px 14px; border:1px solid #d8e5ee; border-radius:9px; background:linear-gradient(135deg,#f5faff,#f8fcfa); }
+.groundwater-hero > div:first-child { display:grid; gap:2px; }.groundwater-hero span { color:#65766e; font-size:8px; }.groundwater-hero strong { color:#1768b7; font-size:25px; letter-spacing:-.8px; }.groundwater-hero small { color:#7a8780; font-size:7px; }
+.groundwater-range { min-width:105px; display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:5px; }.groundwater-range i { height:2px; background:linear-gradient(90deg,#55a6e9,#1768b7); }.groundwater-range span { color:#43667b; font-size:7px; font-weight:720; }
+.groundwater-bands { display:grid; grid-template-columns:repeat(3,1fr); margin:0 17px 12px; border:1px solid #e2e8e5; border-radius:8px; overflow:hidden; }
+.groundwater-bands > div { min-height:57px; display:grid; align-content:center; gap:2px; padding:8px; border-right:1px solid #e5eae7; }.groundwater-bands > div:last-child { border-right:0; }.groundwater-bands strong { color:#1768b7; font-size:12px; }.groundwater-bands span,.groundwater-bands small { color:#77837c; font-size:6.5px; }
+.gmr-heading { display:flex; align-items:center; justify-content:space-between; margin:0 17px 7px; padding-top:8px; border-top:1px solid #e8ece9; }.gmr-heading > div { display:grid; gap:2px; }.gmr-heading strong { color:#294137; font-size:9px; }.gmr-heading span { color:#79847e; font-size:7px; }
+.gmr-distribution { display:grid; gap:5px; padding:0 17px 15px; }
+.gmr-distribution > div { display:grid; grid-template-columns:47px minmax(55px,1fr) 34px 105px; gap:7px; align-items:center; }.gmr-distribution span { color:#34483e; font-size:7px; font-weight:730; }.gmr-distribution > div > div { height:5px; overflow:hidden; border-radius:99px; background:#edf1ee; }.gmr-distribution i { height:100%; display:block; border-radius:inherit; background:linear-gradient(90deg,#3a9d68,#167447); }.gmr-distribution strong { color:#167447; font-size:7px; text-align:right; }.gmr-distribution small { color:#7b8680; font-size:6.5px; text-align:right; }
+
+.recommendation-overview-card { grid-column:span 2; min-height:360px; }
+.recommendation-layout { display:grid; grid-template-columns:210px 1fr; gap:22px; padding:10px 19px 14px; }
+.recommendation-summary { display:grid; align-content:center; padding:17px; border:1px solid #dbe7df; border-radius:9px; background:linear-gradient(145deg,#f7fbf8,#eef7f1); }
+.recommendation-summary strong { color:#126c40; font-size:29px; line-height:1; letter-spacing:-1px; }.recommendation-summary span { margin-top:5px; color:#29483a; font-size:9px; font-weight:720; }.recommendation-summary p { margin:12px 0 0; color:#6d7c74; font-size:8px; line-height:1.55; }
+.recommendation-bars { display:grid; gap:9px; }
+.recommendation-bar-heading { display:grid; grid-template-columns:1fr auto auto; gap:12px; align-items:center; }.recommendation-bar-heading span { display:flex; align-items:center; gap:6px; color:#30453a; font-size:8px; font-weight:720; }.recommendation-bar-heading span i { width:7px; height:7px; border-radius:2px; }.recommendation-bar-heading strong { color:#263e32; font-size:8px; }.recommendation-bar-heading small { min-width:108px; color:#7a8580; font-size:7px; text-align:right; }
+.recommendation-track,.assignment-track { height:6px; overflow:hidden; border-radius:999px; background:#edf1ee; }.recommendation-track > i,.assignment-track > i { height:100%; display:block; border-radius:inherit; }
+.assignment-status { display:grid; grid-template-columns:1fr 180px; gap:7px 14px; margin:0 19px 16px; padding:12px 14px; border:1px solid #e1e7e3; border-radius:9px; background:#fbfcfb; }.assignment-status > div:first-child { display:flex; justify-content:space-between; gap:10px; }.assignment-status span { color:#66756d; font-size:8px; }.assignment-status strong { color:#173c29; font-size:9px; }.assignment-track { align-self:center; }.assignment-track i { width:0; background:#168951; transition:width .4s ease; }.assignment-status small { grid-column:1 / -1; color:#7b8680; font-size:7px; line-height:1.45; }
+
+.infrastructure-card { min-height:360px; }
+.infrastructure-total { display:grid; padding:18px 19px 15px; border-bottom:1px solid #e7ebe8; }.infrastructure-total strong { color:#173c29; font-size:32px; letter-spacing:-1.2px; line-height:1; }.infrastructure-total span { margin-top:5px; color:#30473b; font-size:10px; font-weight:720; }.infrastructure-total small { margin-top:3px; color:#75817a; font-size:8px; }
+.infrastructure-metrics { display:grid; grid-template-columns:repeat(3,1fr); margin:14px 17px 13px; border:1px solid #e1e7e3; border-radius:8px; overflow:hidden; }.infrastructure-metrics > div { min-height:78px; display:grid; align-content:center; gap:3px; padding:10px; border-right:1px solid #e5eae7; }.infrastructure-metrics > div:last-child { border-right:0; }.infrastructure-metrics span { color:#718078; font-size:7px; }.infrastructure-metrics strong { color:#176a42; font-size:19px; }.infrastructure-metrics small { color:#7e8983; font-size:7px; }
+
+@media (max-width:1280px) {
+  .intelligence-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .hydro-card { grid-column:span 2; }
+  .recommendation-overview-card { grid-column:span 1; }
+  .recommendation-layout { grid-template-columns:1fr; gap:12px; }
+  .infrastructure-card { min-height:398px; }
+}

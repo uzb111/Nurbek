@@ -10,6 +10,7 @@ const OFFICIAL_LIMIT_URL = "../mvp_data/official_water_limit_2025.json";
 const IRRIGATION_RULES_URL = "../mvp_data/config/irrigation_norms.csv";
 const ACTUAL_ET_URL = "../mvp_data/actual_et_by_field.json";
 const ACTUAL_ET_DASHBOARD_URL = "../mvp_data/actual_et_dashboard.json";
+const DISTRICT_ANALYTICS_URL = "../mvp_data/district_analytics.json";
 const FIELD_COMPONENTS_URL = "../mvp_data/geojson/field_components.geojson";
 const NETWORK_SOURCES = {
   kanal: { url: "../mvp_data/geojson/kanal.geojson", label: "Kanallar — 1 615", color: "#16b8e8", weight: 2.8 },
@@ -69,6 +70,7 @@ let actualEtMetadata = null;
 let fieldComponentPromise = null;
 let fieldComponentIndex = new Map();
 let districtNeedCache = null;
+let districtAnalytics = null;
 const networkLoadState = new Set();
 const networkSpatialCache = new Map();
 
@@ -389,6 +391,73 @@ function renderDashboard(summary) {
   renderConclusions();
 }
 
+function renderDistrictCropAssignment(features = []) {
+  const total = districtAnalytics?.field_area?.fields || features.length;
+  const assigned = features.filter((feature) => feature.properties.crop_group_mvp).length;
+  const share = percent(assigned, total);
+  document.querySelector("#district-assignment-label").textContent = `${fmtInt.format(assigned)} / ${fmtInt.format(total)} dala`;
+  document.querySelector("#district-assignment-bar").style.width = `${Math.min(share, 100)}%`;
+  if (!assigned) {
+    document.querySelector("#district-assignment-note").textContent = "Ekinlar boshlang‘ich holatda kiritilmagan; tavsiya xaritada qo‘llangach yangilanadi.";
+    return;
+  }
+  const allocation = PNG_CROP_ORDER.map((group) => {
+    const matching = features.filter((feature) => feature.properties.crop_group_mvp === group);
+    return { group, fields: matching.length, area: sum(matching, (feature) => feature.properties.maydoni) };
+  }).filter((item) => item.fields);
+  document.querySelector("#district-assignment-note").textContent = allocation.map((item) => `${CROP_LABELS[item.group]}: ${fmtInt.format(item.fields)} dala / ${fmtDec.format(item.area)} ga`).join(" · ");
+}
+
+function renderDistrictAnalytics(data) {
+  districtAnalytics = data;
+  const bonitet = data.bonitet;
+  document.querySelector(".bonitet-ring").style.setProperty("--bonitet", bonitet.average);
+  document.querySelector("#district-bonitet-average").textContent = fmtDec.format(bonitet.average);
+  document.querySelector("#district-bonitet-min").textContent = fmtInt.format(bonitet.minimum);
+  document.querySelector("#district-bonitet-max").textContent = fmtInt.format(bonitet.maximum);
+  document.querySelector("#district-field-min").textContent = `${fmtPrecise.format(data.field_area.minimum_ha)} ga`;
+  document.querySelector("#district-field-median").textContent = `${fmtDec.format(data.field_area.median_ha)} ga`;
+  document.querySelector("#district-field-max").textContent = `${fmtDec.format(data.field_area.maximum_ha)} ga`;
+  document.querySelector("#district-bonitet-note").textContent = `${fmtInt.format(bonitet.source_polygons)} tuproq poligoni va ${fmtInt.format(bonitet.covered_area_ha)} ga qamrov bo‘yicha maydon-vaznli baho.`;
+
+  const textureColors = { 1: "#d5b46d", 2: "#e0a755", 3: "#65b97b", 4: "#258b63", 5: "#7a725f", 6: "#5e6170" };
+  document.querySelector("#district-soil-profile").innerHTML = data.soil_profile.map((layer) => `<div class="soil-depth-row"><div class="soil-depth-heading"><strong>${escapeHtml(layer.depth)}</strong><span>${escapeHtml(layer.dominant.label)} · ${fmtDec.format(layer.dominant.share_pct)}%</span></div><div class="soil-profile-track">${layer.distribution.map((item) => `<i style="width:${item.share_pct}%;background:${textureColors[item.code]}" title="${escapeHtml(item.label)}: ${fmtDec.format(item.share_pct)}%"></i>`).join("")}</div><p>${layer.distribution.map((item) => `${escapeHtml(item.label)} ${fmtDec.format(item.share_pct)}%`).join(" · ")}</p></div>`).join("");
+  const textureCodes = [...new Map(data.soil_profile.flatMap((layer) => layer.distribution).map((item) => [item.code, item])).values()].sort((first, second) => first.code - second.code);
+  document.querySelector("#district-texture-key").innerHTML = textureCodes.map((item) => `<span><i style="background:${textureColors[item.code]}"></i>${escapeHtml(item.label)}</span>`).join("");
+
+  const groundwater = data.groundwater;
+  document.querySelector("#district-groundwater-average").textContent = fmtInt.format(groundwater.average_mm);
+  document.querySelector("#district-groundwater-min").textContent = `${fmtInt.format(groundwater.minimum_mm)} mm`;
+  document.querySelector("#district-groundwater-max").textContent = `${fmtInt.format(groundwater.maximum_mm)} mm`;
+  document.querySelector("#district-groundwater-bands").innerHTML = groundwater.bands.map((band) => `<div><strong>${fmtDec.format(band.share_pct)}%</strong><span>${escapeHtml(band.label)}</span><small>${fmtInt.format(band.measurements)} o‘lchov</small></div>`).join("");
+  document.querySelector("#district-gmr-note").textContent = `${data.gmr.length} rayon · ${fmtInt.format(data.field_area.total_ha)} ga`;
+  document.querySelector("#district-gmr-distribution").innerHTML = data.gmr.map((item) => `<div><span>GMR ${escapeHtml(item.gmr)}</span><div><i style="width:${item.share_pct}%"></i></div><strong>${fmtDec.format(item.share_pct)}%</strong><small>${fmtInt.format(item.area_ha)} ga · ${fmtInt.format(item.fields)} dala</small></div>`).join("");
+
+  const recommendation = data.recommendation;
+  document.querySelector("#district-recommendation-area").textContent = fmtInt.format(recommendation.total_area_ha);
+  document.querySelector("#district-recommendation-bars").innerHTML = recommendation.crops.map((crop) => `<div><div class="recommendation-bar-heading"><span><i style="background:${crop.color}"></i>${escapeHtml(crop.label)}</span><strong>${fmtInt.format(crop.area_ha)} ga</strong><small>${fmtInt.format(crop.fields)} dala · ${fmtDec.format(crop.share_pct)}%</small></div><div class="recommendation-track"><i style="width:${Math.max(crop.share_pct, .25)}%;background:${crop.color}"></i></div></div>`).join("");
+  renderDistrictCropAssignment(fullData?.features || []);
+
+  document.querySelector("#district-land-area").textContent = fmtInt.format(data.field_area.total_ha);
+  document.querySelector("#district-field-count").textContent = `${fmtInt.format(data.field_area.fields)} ta mantiqiy dala`;
+  document.querySelector("#district-canal-count").textContent = fmtInt.format(data.infrastructure.canals.features);
+  document.querySelector("#district-canal-length").textContent = `${fmtDec.format(data.infrastructure.canals.length_km)} km`;
+  document.querySelector("#district-drain-count").textContent = fmtInt.format(data.infrastructure.drains.features);
+  document.querySelector("#district-drain-length").textContent = `${fmtDec.format(data.infrastructure.drains.length_km)} km`;
+  document.querySelector("#district-station-count").textContent = fmtInt.format(data.infrastructure.groundwater_stations);
+}
+
+async function loadDistrictAnalytics() {
+  try {
+    const response = await fetch(DISTRICT_ANALYTICS_URL, { cache: "no-store" });
+    if (!response.ok) throw new Error(`Tuman analitikasi: ${response.status}`);
+    renderDistrictAnalytics(await response.json());
+  } catch (error) {
+    document.querySelector("#district-intelligence-title").textContent = "Tuman analitikasi yuklanmadi";
+    console.warn(error);
+  }
+}
+
 function balanceMillions(value) { return fmtDec.format(number(value) / 1e6); }
 function premiumMillions(value) { return fmtPrecise.format(number(value) / 1e6); }
 
@@ -638,6 +707,7 @@ function assignCropToSelectedField() {
     renderCropLegend();
     const replacementLayer = splitLayerForField(properties.field_id);
     if (replacementLayer) selectField(selectedFeature, replacementLayer);
+    renderDistrictCropAssignment(fullData?.features || []);
     return;
   }
   if (cropGroup) manualCropAssignments[properties.field_id] = cropGroup;
@@ -647,6 +717,7 @@ function assignCropToSelectedField() {
   if (geoLayer) geoLayer.setStyle(styleFor);
   renderCropLegend();
   selectField(selectedFeature, selectedLayer);
+  renderDistrictCropAssignment(fullData?.features || []);
 }
 
 function currentDistrictUsedM3() {
@@ -860,6 +931,7 @@ function applyCropRecommendations() {
   }
   const summary = PNG_CROP_ORDER.map((group) => `${CROP_LABELS[group]} ${fmtInt.format(counts.get(group) || 0)} dala / ${fmtDec.format(assignedAreas.get(group) || 0)} ga`).join(" · ");
   document.querySelector("#map-hint").textContent = `Tavsiya tayyor: ${fmtInt.format(assignments.size)} dala, ${counts.size}/6 ekin joylashtirildi. ${summary}.`;
+  renderDistrictCropAssignment(fullData.features);
 }
 
 function renderFieldDecision(properties) {
@@ -1813,6 +1885,7 @@ function initMapPage() {
       if (etResponse.ok) applyActualEtData(fullData.features, await etResponse.json());
       else console.warn(`Real ET ma’lumoti yuklanmadi: ${etResponse.status}`);
       if (irrigationRules.length) applyStoredCropAssignments(fullData.features);
+      renderDistrictCropAssignment(fullData.features);
       buildFieldNetworkIndexes(fullData.features);
       document.querySelector("#map-loading").hidden = true;
       renderMapView(fullData.features);
@@ -1871,6 +1944,7 @@ loadManualCropAssignments();
 const initialView = new URLSearchParams(window.location.search).get("view");
 showView(initialView === "map" ? "map" : "dashboard");
 loadSummary();
+loadDistrictAnalytics();
 loadDashboardEtSummary();
 loadWeather();
 loadOfficialPeriodWeather();

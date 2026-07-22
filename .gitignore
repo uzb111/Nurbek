@@ -38,6 +38,7 @@ mvp_data/config/field_zone_review_*.csv
 !mvp_data/open_meteo_official_period_2025.json
 !mvp_data/official_water_limit_2025.json
 !mvp_data/actual_et_by_field.json
+!mvp_data/district_analytics.json
 
 # Local design references and source images
 design_concepts/

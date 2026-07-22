@@ -10,6 +10,9 @@ const actualEt = readJson("mvp_data", "actual_et_by_field.json");
 const official = readJson("mvp_data", "official_water_limit_2025.json");
 const periodWeather = readJson("mvp_data", "open_meteo_official_period_2025.json");
 const summary = readJson("mvp_data", "dashboard_summary.json");
+const districtAnalytics = readJson("mvp_data", "district_analytics.json");
+const canals = readJson("mvp_data", "geojson", "kanal.geojson").features;
+const drains = readJson("mvp_data", "geojson", "zovur.geojson").features;
 const rulesText = fs.readFileSync(path.join(root, "mvp_data", "config", "irrigation_norms.csv"), "utf8").trim();
 const appText = fs.readFileSync(path.join(root, "dashboard", "app.js"), "utf8");
 const htmlText = fs.readFileSync(path.join(root, "dashboard", "index.html"), "utf8");
@@ -84,6 +87,13 @@ if (!close(officialMonthTotal, number(official.total_limit_m3), 1)) warnings.pus
 if (summary.totals.fields !== fields.length) errors.push("Dashboard summary mantiqiy dala soni merged qatlamga mos emas");
 if (summary.totals.polygons !== components.length) errors.push("Dashboard summary manba poligon soni komponent qatlamiga mos emas");
 if (!close(summary.totals.area_ha, fieldArea, 0.01)) errors.push("Dashboard summary maydoni merged qatlamga mos emas");
+if (districtAnalytics.field_area.fields !== fields.length || !close(districtAnalytics.field_area.total_ha, fieldArea, 0.1)) errors.push("Tuman analitikasidagi dala qamrovi merged qatlamga mos emas");
+if (districtAnalytics.bonitet.average < districtAnalytics.bonitet.minimum || districtAnalytics.bonitet.average > districtAnalytics.bonitet.maximum) errors.push("Bonitet o‘rtachasi minimum–maksimum oralig‘ida emas");
+if (districtAnalytics.soil_profile.length !== 3 || districtAnalytics.soil_profile.some((layer) => !close(sum(layer.distribution, (item) => item.share_pct), 100, 0.2))) errors.push("0–30, 30–100 yoki 100–200 sm tuproq taqsimoti 100% ga yig‘ilmadi");
+if (districtAnalytics.groundwater.minimum_mm > districtAnalytics.groundwater.average_mm || districtAnalytics.groundwater.average_mm > districtAnalytics.groundwater.maximum_mm) errors.push("Sizot suvi mm statistikasi mantiqiy tartibda emas");
+if (districtAnalytics.infrastructure.canals.features !== canals.length || districtAnalytics.infrastructure.drains.features !== drains.length) errors.push("Kanal yoki zovur soni GDB GeoJSON qamroviga mos emas");
+if (!close(sum(districtAnalytics.recommendation.crops, (item) => item.area_ha), districtAnalytics.recommendation.total_area_ha, 0.5)) errors.push("Ekin tavsiyasi maydonlari jami tuman maydoniga teng emas");
+if (districtAnalytics.recommendation.crops.find((item) => item.group === "alfalfa")?.area_ha > 5) errors.push("Beda tavsiyasi 5 ga limitdan oshdi");
 
 const cropGroups = [...new Set(rules.map((rule) => rule.crop_group))];
 const zones = [...new Set(rules.map((rule) => rule.irrigation_zone))];
@@ -98,6 +108,7 @@ const report = {
   official_limit: { total_m3: number(official.total_limit_m3), monthly_sum_m3: officialMonthTotal },
   official_period_weather: { days: periodWeatherData.daily?.time?.length || 0, rain_mm: periodRainMm, et0_mm: periodEt0Mm },
   dom_contract: { queried_ids: queriedIds.size, missing_ids: missingDomIds },
+  district_analytics: { bonitet: districtAnalytics.bonitet, groundwater: districtAnalytics.groundwater, soil_layers: districtAnalytics.soil_profile.length, canals: canals.length, drains: drains.length },
   route_loss_formula: "1 - (1 - 0.015)^(route_depth - 1)",
 };
 
