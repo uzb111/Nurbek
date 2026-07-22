@@ -879,6 +879,25 @@ function recommendedCropForField(properties) {
   return (cropCandidatesForField(properties) || [])[0] || null;
 }
 
+function tmCandidateForField(properties) {
+  const candidates = cropCandidatesForField(properties) || [];
+  return candidates.find((candidate) => candidate.group === properties.crop_group_mvp) || candidates[0] || null;
+}
+
+function renderFieldTmProfile(properties) {
+  const candidate = tmCandidateForField(properties);
+  const ring = document.querySelector("#field-tm-ring");
+  const score = candidate ? Math.round(candidate.mechanicalScore) : null;
+  ring.style.setProperty("--tm-score", score || 0);
+  ring.style.setProperty("--tm-color", !score ? "#7d8d84" : score >= 80 ? "#147a49" : score >= 60 ? "#d28a16" : "#cf4d43");
+  document.querySelector("#field-tm-score").textContent = score === null ? "—" : score;
+  document.querySelector("#field-soil-dominant").textContent = candidate
+    ? `${CROP_LABELS[candidate.group]} uchun Tm mosligi`
+    : "Tm mosligi hisoblanmoqda";
+  const dominant = TEXTURE_LABELS[number(properties.Tm1)] || "aniqlanmagan";
+  document.querySelector("#field-soil-profile-summary").textContent = `Dominant: ${dominant} · Tm1[${number(properties.Tm1) || "—"}] 0–30 sm ${TEXTURE_LABELS[number(properties.Tm1)] || "—"} · Tm2[${number(properties.Tm2) || "—"}] 30–100 sm ${TEXTURE_LABELS[number(properties.Tm2)] || "—"} · Tm3[${number(properties.Tm3) || "—"}] 100–200 sm ${TEXTURE_LABELS[number(properties.Tm3)] || "—"} · sizot ${properties.SS ? `${fmtInt.format(number(properties.SS) * 1000)} mm` : "—"}`;
+}
+
 function updateRecommendationControl() {
   const button = document.querySelector("#recommend-crops");
   if (!button) return;
@@ -1017,6 +1036,7 @@ function applyCropRecommendations() {
 }
 
 function renderFieldDecision(properties) {
+  renderFieldTmProfile(properties);
   const state = document.querySelector("#field-water-state");
   const bar = document.querySelector("#field-water-bar");
   const water = properties.crop_group_mvp ? fieldWaterAnalysis(properties) : null;
@@ -1902,8 +1922,6 @@ function selectField(feature, layer) {
   document.querySelector("#field-title").textContent = `Dala ${String(p.field_id || p.feature_id).slice(0, 8)}`;
   const meta = getMeta(p.demo_norm_status);
   const status = document.querySelector("#field-status"); status.textContent = meta.label; status.className = `status-pill ${meta.className}`;
-  document.querySelector("#field-soil-dominant").textContent = TEXTURE_LABELS[number(p.Tm1)] || "Tarkib aniqlanmagan";
-  document.querySelector("#field-soil-profile-summary").textContent = `Tm1[${number(p.Tm1) || "—"}] 0–30 sm ${TEXTURE_LABELS[number(p.Tm1)] || "—"} · Tm2[${number(p.Tm2) || "—"}] 30–100 sm ${TEXTURE_LABELS[number(p.Tm2)] || "—"} · Tm3[${number(p.Tm3) || "—"}] 100–200 sm ${TEXTURE_LABELS[number(p.Tm3)] || "—"} · sizot ${p.SS ? `${fmtInt.format(number(p.SS) * 1000)} mm` : "—"}`;
   document.querySelector("#field-crop").textContent = `${text(p.crop_mvp, "Ekin kiritilmagan")} · ${sourceLabel(p.crop_mvp_source)}`;
   document.querySelector("#field-area").textContent = `${fmtDec.format(number(p.maydoni))} ga`;
   const distinctGmrs = [...new Set((p.soil_gmr_components || []).map((component) => component.gmr).filter(Boolean))];

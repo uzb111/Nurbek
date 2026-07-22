@@ -75,3 +75,8 @@ Tugma oldidagi tanlovda bitta ekin belgilansa, tizim shu ekin uchun umumiy,
 uch qatlamli Tm va tuproq ballari bo‘yicha mos keladigan dalalarnigina to‘ldiradi.
 Qolgan dalalar bo‘sh qoladi. `Barcha ekinlar` tanlovi esa olti ekin bo‘yicha
 umumiy joylashtirish algoritmini ishga tushiradi.
+
+Dala pasportidagi aylana doimiy chuqurlik belgisi emas. U tanlangan ekin uchun
+`50% × Tm1 + 30% × Tm2 + 20% × Tm3` mexanik tarkib mosligini 0–100 ball
+ko‘rinishida beradi. Dala yoki ekin o‘zgarsa ball qayta hisoblanadi; 0–30,
+30–100 va 100–200 sm manba qiymatlari aylana yonidagi izohda saqlanadi.

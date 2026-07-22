@@ -154,6 +154,9 @@ try {
     selectField(target, targetLayer);
     return {
       soilProfileSummary: document.querySelector("#field-soil-profile-summary").textContent,
+      tmScore: document.querySelector("#field-tm-score").textContent,
+      tmTitle: document.querySelector("#field-soil-dominant").textContent,
+      expectedTmScore: String(Math.round(tmCandidateForField(target.properties).mechanicalScore)),
       title: document.querySelector("#route-report-title").textContent,
       subtitle: document.querySelector("#route-report-subtitle").textContent,
       legend: document.querySelector(".route-chart-legend").textContent,
@@ -164,6 +167,22 @@ try {
     };
   })()`);
   if (!routeUi.soilProfileSummary.includes("0–30 sm") || !routeUi.soilProfileSummary.includes("100–200 sm") || !routeUi.soilProfileSummary.includes("sizot")) throw new Error("Dala pasportida uch qatlamli tuproq profili yoki sizot ko‘rinmadi");
+  if (routeUi.tmScore !== routeUi.expectedTmScore || !routeUi.tmTitle.includes("uchun Tm mosligi") || routeUi.tmScore === "0–200") throw new Error("Dala pasportidagi dinamik Tm moslik balli ishlamadi");
+  const tmDynamics = await evaluate(`(() => {
+    const originalFeature = selectedFeature, originalLayer = selectedLayer;
+    const originalScore = document.querySelector("#field-tm-score").textContent;
+    const alternate = fullData.features.find((feature) => {
+      const candidate = tmCandidateForField(feature.properties);
+      return candidate && String(Math.round(candidate.mechanicalScore)) !== originalScore;
+    });
+    let alternateLayer = null;
+    geoLayer.eachLayer((layer) => { if (layer.feature === alternate) alternateLayer = layer; });
+    if (alternate && alternateLayer) selectField(alternate, alternateLayer);
+    const alternateScore = document.querySelector("#field-tm-score").textContent;
+    if (originalFeature && originalLayer) selectField(originalFeature, originalLayer);
+    return { found: Boolean(alternate && alternateLayer), originalScore, alternateScore };
+  })()`);
+  if (!tmDynamics.found || tmDynamics.originalScore === tmDynamics.alternateScore) throw new Error("Dala almashtirilganda Tm moslik balli yangilanmadi");
   if (!routeUi.title.includes("dalaga suv yetadi") || !routeUi.subtitle.includes("tarmoq bo‘g‘ini")) throw new Error("Suv yo‘li sarlavhasi oddiy tilda emas");
   if (!routeUi.legend.includes("Har bo‘g‘indan keyin qolgan suv") || routeUi.chartText.includes("LVL")) throw new Error("Route chart eski LVL terminlaridan tozalanmadi");
   if (!routeUi.explanation.includes("Grafikni qanday o‘qish kerak") || !routeUi.chartLabel) throw new Error("Route chart izohi yoki accessibility yorlig‘i yo‘q");
