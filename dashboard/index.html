@@ -6,7 +6,7 @@
     <title>AgroTahlil — Yer va suv tahlili</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2317663b'/%3E%3Cpath d='M16 42C26 39 37 29 45 15c3 19-7 31-23 34M18 47c7-11 14-17 24-23' fill='none' stroke='%23fff' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="./styles.css?v=20260722-tmscorecard1" />
+    <link rel="stylesheet" href="./styles.css?v=20260722-dashboardlayout1" />
   </head>
   <body>
     <div class="app-shell">
@@ -37,7 +37,7 @@
 
         <section class="view-panel premium-overview" id="dashboard-view">
           <header class="district-toolbar">
-            <div class="executive-title"><span class="executive-kicker">SUV VA YER RESURSLARI · ANALITIKA MARKAZI</span><div class="district-selector"><strong>Kasbi tumani</strong><span>Qashqadaryo · hudud kodi 1803</span></div></div>
+            <div class="executive-title"><span class="executive-kicker">SUV VA YER RESURSLARI · ANALITIKA MARKAZI</span><div class="district-selector"><strong>Kasbi tumani</strong><span>Qashqadaryo viloyati</span></div></div>
             <div class="dashboard-actions"><span class="period-selector"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v3m14-3v3M4 9h16M5 6h14a1 1 0 0 1 1 1v12H4V7a1 1 0 0 1 1-1Z"/></svg><span id="premium-period">2025-yil, 1-aprel — 30-sentabr</span></span><button class="report-button" id="download-report" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 20h14"/></svg><span>Hisobotni yuklash</span></button></div>
           </header>
 
@@ -49,10 +49,10 @@
           </section>
 
           <section class="concept-main-grid">
-            <article class="concept-card water-balance-visual">
-              <div class="concept-card-head"><div><span class="section-index">01 · SUV RESURSLARI</span><h2>Suv balansi</h2></div><span>mln m³</span></div>
-              <div class="concept-legend"><span><i class="dash"></i>Rasmiy suv limiti</span><span><i class="line"></i>ET (Real)</span><span><i class="rain"></i>Yog‘ingarchilik</span><span><i class="ground"></i>Sizot suvlari oqimi</span><span><i class="loss"></i>Boshqa yo‘qotishlar</span></div>
-              <div class="concept-water-chart" id="premium-water-chart"><div class="chart-loading">Suv balansi hisoblanmoqda…</div></div>
+            <article class="concept-card recommendation-primary-card">
+              <div class="concept-card-head"><div><span class="section-index">01 · OPTIMAL JOYLASHTIRISH</span><h2>Ekin tavsiyasi</h2></div><span>45 / 30 / 15 / 10 metodika</span></div>
+              <div class="recommendation-layout"><div class="recommendation-summary"><strong id="district-recommendation-area">—</strong><span>ga maydon uchun 6 xil ekin</span><p>Suv ta’minoti, bonitet, mexanik tarkib va ob-havo birgalikda baholangan.</p></div><div class="recommendation-bars" id="district-recommendation-bars"></div></div>
+              <div class="assignment-status"><div><span>Ekin kiritilganlik holati</span><strong id="district-assignment-label">0 / — dala</strong></div><div class="assignment-track"><i id="district-assignment-bar"></i></div><small id="district-assignment-note">Ekinlar boshlang‘ich holatda kiritilmagan; tavsiya xaritada qo‘llangach yangilanadi.</small></div>
             </article>
 
             <article class="concept-card concept-weather" id="premium-weather">
@@ -116,10 +116,10 @@
                 <div class="gmr-distribution" id="district-gmr-distribution"></div>
               </article>
 
-              <article class="concept-card intelligence-card recommendation-overview-card">
-                <div class="concept-card-head"><div><span class="section-index">08 · OPTIMAL JOYLASHTIRISH</span><h2>Ekin tavsiyasi</h2></div><span>45 / 30 / 15 / 10 metodika</span></div>
-                <div class="recommendation-layout"><div class="recommendation-summary"><strong id="district-recommendation-area">—</strong><span>ga maydon uchun 6 xil ekin</span><p>Suv ta’minoti, bonitet, mexanik tarkib va ob-havo birgalikda baholangan.</p></div><div class="recommendation-bars" id="district-recommendation-bars"></div></div>
-                <div class="assignment-status"><div><span>Ekin kiritilganlik holati</span><strong id="district-assignment-label">0 / — dala</strong></div><div class="assignment-track"><i id="district-assignment-bar"></i></div><small id="district-assignment-note">Ekinlar boshlang‘ich holatda kiritilmagan; tavsiya xaritada qo‘llangach yangilanadi.</small></div>
+              <article class="concept-card intelligence-card water-balance-visual intelligence-water-card">
+                <div class="concept-card-head"><div><span class="section-index">08 · SUV RESURSLARI</span><h2>Suv balansi</h2></div><span>mln m³</span></div>
+                <div class="concept-legend"><span><i class="dash"></i>Rasmiy suv limiti</span><span><i class="line"></i>ET (Real)</span><span><i class="rain"></i>Yog‘ingarchilik</span><span><i class="ground"></i>Sizot suvlari oqimi</span><span><i class="loss"></i>Boshqa yo‘qotishlar</span></div>
+                <div class="concept-water-chart" id="premium-water-chart"><div class="chart-loading">Suv balansi hisoblanmoqda…</div></div>
               </article>
 
               <article class="concept-card intelligence-card infrastructure-card">
@@ -349,6 +349,6 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="./app.js?v=20260722-tmscorecard1"></script>
+    <script src="./app.js?v=20260722-dashboardlayout1"></script>
   </body>
 </html>

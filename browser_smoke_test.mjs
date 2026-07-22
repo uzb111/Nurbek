@@ -82,6 +82,8 @@ try {
       realEt: actualEtMetadata.official_period_et_m3,
       periodLabel: document.querySelector("#balance-period").textContent,
       assignmentLabel: document.querySelector("#district-assignment-label").textContent,
+      recommendationAtTop: Boolean(document.querySelector(".concept-main-grid .recommendation-primary-card")),
+      waterBalanceBelow: Boolean(document.querySelector(".district-intelligence .intelligence-water-card #premium-water-chart")),
       districtAnalytics: {
         bonitet: document.querySelector("#district-bonitet-average").textContent,
         soilLayers: document.querySelectorAll("#district-soil-profile .soil-depth-row").length,
@@ -100,11 +102,23 @@ try {
   }
   if (recommendation.cropAreas.alfalfa > 5.000001) throw new Error(`Beda tavsiyasi 5 ga limitdan oshdi: ${recommendation.cropAreas.alfalfa}`);
   if (recommendation.assignmentLabel.replace(/\D/g, "") !== "1071010710" || recommendation.districtAnalytics.soilLayers !== 3 || recommendation.districtAnalytics.gmrRows !== 7 || recommendation.districtAnalytics.recommendationRows !== 6) throw new Error("Tuman analitikasi yoki ekin kiritilganlik holati to‘liq render bo‘lmadi");
+  if (!recommendation.recommendationAtTop || !recommendation.waterBalanceBelow) throw new Error("Ekin tavsiyasi yuqoriga yoki suv balansi pastki tahlilga ko‘chmadi");
   if (recommendation.denominator.mode !== "dynamic") throw new Error("Tavsiya tugagach tuman talabi dinamik bo‘lmadi");
   if (Math.abs(recommendation.sourceTotal - recommendation.officialLimit) > 1) throw new Error("Dala limit ulushlari rasmiy limitga yig‘ilmadi");
   if (Math.abs(recommendation.supplied - recommendation.officialLimit * .88) > 10000) throw new Error("Boshlang‘ich berilgan suv rasmiy limitning 88% iga teng emas");
   if (Math.abs(recommendation.used - recommendation.supplied * .82) > 10000) throw new Error("Boshlang‘ich ishlatilgan suv berilgan suvning 82% iga teng emas");
   if (!recommendation.periodLabel.includes("2025-04-01") || recommendation.realEt <= 0) throw new Error("Tuman balansi rasmiy davr va real ETga o‘tmadi");
+  if (process.env.CAPTURE_DASHBOARD_UI) {
+    await evaluate(`(() => { showView("dashboard"); window.scrollTo(0, 0); })()`);
+    await delay(500);
+    const screenshot = await command("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+    const screenshotPath = path.join(os.tmpdir(), `agrotahlil-dashboard-${browserWidth}.png`);
+    const { writeFile } = await import("node:fs/promises");
+    await writeFile(screenshotPath, Buffer.from(screenshot.data, "base64"));
+    console.log(JSON.stringify({ dashboardScreenshot: screenshotPath }, null, 2));
+    await evaluate(`showView("map")`);
+    await delay(250);
+  }
 
   const recommendationToggle = await evaluate(`(() => {
     const button = document.querySelector("#recommend-crops");
@@ -186,7 +200,7 @@ try {
   if (!routeUi.title.includes("dalaga suv yetadi") || !routeUi.subtitle.includes("tarmoq bo‘g‘ini")) throw new Error("Suv yo‘li sarlavhasi oddiy tilda emas");
   if (!routeUi.legend.includes("Har bo‘g‘indan keyin qolgan suv") || routeUi.chartText.includes("LVL")) throw new Error("Route chart eski LVL terminlaridan tozalanmadi");
   if (!routeUi.explanation.includes("Grafikni qanday o‘qish kerak") || !routeUi.chartLabel) throw new Error("Route chart izohi yoki accessibility yorlig‘i yo‘q");
-  if (!routeUi.popup.includes("Bonitet:") || !routeUi.popup.includes("Tm1 · 0–30 sm") || !routeUi.popup.includes("Tm2 · 30–100 sm") || !routeUi.popup.includes("Tm3 · 100–200 sm") || !routeUi.popup.includes("mexanik moslik") || !routeUi.popup.includes("15 balli") || !routeUi.popup.includes("45% suv") || !routeUi.popup.includes("/100") || routeUi.popup.includes("Zona:")) throw new Error("Dala popupida Tm kodi, uch qatlam bahosi yoki yakuniy formula ko‘rinmadi");
+  if (!routeUi.popup.includes("Bonitet:") || !routeUi.popup.includes("Tm1 · 0–30 sm") || !routeUi.popup.includes("Tm2 · 30–100 sm") || !routeUi.popup.includes("Tm3 · 100–200 sm") || !routeUi.popup.includes("mexanik moslik") || !routeUi.popup.includes("15 balli") || !routeUi.popup.includes("45% suv") || !routeUi.popup.includes("/100") || routeUi.popup.includes("Zona:") || /kod\s+[1-8]/i.test(routeUi.popup)) throw new Error("Dala popupidagi Tm matni, uch qatlam bahosi yoki yakuniy formula noto‘g‘ri");
   if (process.env.CAPTURE_TM_POPUP) {
     await evaluate(`(() => { let layer = null; geoLayer.eachLayer((item) => { if (item.feature === selectedFeature) layer = item; }); layer?.openPopup(); document.querySelector("#map").scrollIntoView({ block: "center" }); })()`);
     await delay(500);

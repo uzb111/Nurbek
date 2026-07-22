@@ -577,7 +577,7 @@ function updateWaterBalance() {
 
 function renderDistrictBalance(data) {
   districtBalance = data;
-  document.querySelector("#balance-district").textContent = `${data.district.name} · kod ${data.district.code}`;
+  document.querySelector("#balance-district").textContent = `${data.district.name} tumani`;
   updateBalancePeriodLabel();
   const cropLabels = { cotton: "Paxta", winter_grain: "Bug‘doy", alfalfa: "Beda", maize: "Makkajo‘xori", orchard: "Bog‘", melons: "Poliz", vegetables: "Sabzavot" };
   const maximum = Math.max(...data.crop_groups.map((group) => group.etc_m3), 1);
@@ -895,7 +895,7 @@ function renderFieldTmProfile(properties) {
     ? `${CROP_LABELS[candidate.group]} uchun Tm mosligi`
     : "Tm mosligi hisoblanmoqda";
   const dominant = TEXTURE_LABELS[number(properties.Tm1)] || "aniqlanmagan";
-  document.querySelector("#field-soil-profile-summary").textContent = `Dominant: ${dominant} · Tm1[${number(properties.Tm1) || "—"}] 0–30 sm ${TEXTURE_LABELS[number(properties.Tm1)] || "—"} · Tm2[${number(properties.Tm2) || "—"}] 30–100 sm ${TEXTURE_LABELS[number(properties.Tm2)] || "—"} · Tm3[${number(properties.Tm3) || "—"}] 100–200 sm ${TEXTURE_LABELS[number(properties.Tm3)] || "—"} · sizot ${properties.SS ? `${fmtInt.format(number(properties.SS) * 1000)} mm` : "—"}`;
+  document.querySelector("#field-soil-profile-summary").textContent = `Dominant: ${dominant} · Tm1 · 0–30 sm: ${TEXTURE_LABELS[number(properties.Tm1)] || "—"} · Tm2 · 30–100 sm: ${TEXTURE_LABELS[number(properties.Tm2)] || "—"} · Tm3 · 100–200 sm: ${TEXTURE_LABELS[number(properties.Tm3)] || "—"} · sizot ${properties.SS ? `${fmtInt.format(number(properties.SS) * 1000)} mm` : "—"}`;
 }
 
 function updateRecommendationControl() {
@@ -1362,7 +1362,7 @@ function renderSplitEditors() {
     const properties = feature.properties;
     const summary = splitPartSummary(feature);
     const rule = summary.rule;
-    const soilProfile = `<div class="split-soil-readonly"><span>Tm1 · 0–30 sm<strong>${number(properties.Tm1) ? `kod ${number(properties.Tm1)} · ` : ""}${escapeHtml(TEXTURE_LABELS[number(properties.Tm1)] || "—")}</strong></span><span>Tm2 · 30–100 sm<strong>${number(properties.Tm2) ? `kod ${number(properties.Tm2)} · ` : ""}${escapeHtml(TEXTURE_LABELS[number(properties.Tm2)] || "—")}</strong></span><span>Tm3 · 100–200 sm<strong>${number(properties.Tm3) ? `kod ${number(properties.Tm3)} · ` : ""}${escapeHtml(TEXTURE_LABELS[number(properties.Tm3)] || "—")}</strong></span><span>Sizot<strong>${properties.SS ? `${fmtInt.format(number(properties.SS) * 1000)} mm` : "—"}</strong></span></div>`;
+    const soilProfile = `<div class="split-soil-readonly"><span>Tm1 · 0–30 sm<strong>${escapeHtml(TEXTURE_LABELS[number(properties.Tm1)] || "—")}</strong></span><span>Tm2 · 30–100 sm<strong>${escapeHtml(TEXTURE_LABELS[number(properties.Tm2)] || "—")}</strong></span><span>Tm3 · 100–200 sm<strong>${escapeHtml(TEXTURE_LABELS[number(properties.Tm3)] || "—")}</strong></span><span>Sizot<strong>${properties.SS ? `${fmtInt.format(number(properties.SS) * 1000)} mm` : "—"}</strong></span></div>`;
     if (!properties.crop_group_mvp) {
       return `<article class="split-part-card" data-part-index="${index}"><div class="split-part-head"><strong>Qism ${properties.split_part}</strong><span>${fmtDec.format(summary.area)} ga</span></div><div class="split-part-grid"><label>Ekin<select data-split-field="crop_group_mvp">${splitCropOptions(properties.crop_group_mvp)}</select></label>${soilProfile}</div><div class="split-result"><div class="split-full"><span>Hisoblash holati</span><strong>Avval shu qism uchun ekin tanlang</strong><small>Maydon × GMR bo‘yicha konservativ PNG normasi va tarmoqdan yetadigan suv alohida qayta hisoblanadi.</small></div></div><p class="split-alternatives">GMR, bonitet, uch qatlamli mexanik tarkib va sizot qiymati asl geometriyadan avtomatik kesildi; faqat ekin tanlanadi.</p></article>`;
     }
@@ -1518,9 +1518,8 @@ function popupHtml(properties) {
     { key: "Tm3", label: "100–200 sm", score: recommendation?.textureLayerScores?.[2]?.score },
   ];
   const textureRows = textureLayers.map((layer) => {
-    const code = number(properties[layer.key]);
-    const label = TEXTURE_LABELS[code] || "aniqlanmagan";
-    return `<div><span>${layer.key} · ${layer.label}</span><strong>${code ? `kod ${code} · ` : ""}${escapeHtml(label)}</strong><small>${Number.isFinite(layer.score) ? `${fmtInt.format(layer.score)} ball` : "baholanmagan"}</small></div>`;
+    const label = TEXTURE_LABELS[number(properties[layer.key])] || "aniqlanmagan";
+    return `<div><span>${layer.key} · ${layer.label}</span><strong>${escapeHtml(label)}</strong><small>${Number.isFinite(layer.score) ? `${fmtInt.format(layer.score)} ball` : "baholanmagan"}</small></div>`;
   }).join("");
   const textureFormula = recommendation ? `<div class="popup-tm-total"><span>${escapeHtml(CROP_LABELS[recommendation.group] || recommendation.group)} uchun mexanik moslik</span><strong>${fmtInt.format(recommendation.mechanicalScore)} ball</strong><small>50%×Tm1 + 30%×Tm2 + 20%×Tm3 = yakuniy formulaning ${fmtDec.format(recommendation.contributions.texture)} / 15 balli</small><code>45% suv (${fmtInt.format(recommendation.waterScore)}) + 30% bonitet (${fmtInt.format(recommendation.soilScore)}) + 15% Tm (${fmtInt.format(recommendation.mechanicalScore)}) + 10% ob-havo (${fmtInt.format(recommendation.climateScore)}) = ${fmtInt.format(recommendation.score)}/100</code></div>` : "";
   const groundwater = properties.SS ? `${fmtInt.format(number(properties.SS) * 1000)} mm` : "—";
@@ -1896,11 +1895,11 @@ function renderSoilComposition(properties) {
     : `${fmtInt.format(number(properties.merged_source_parts) || components.length || 1)} GIS qism → 1 dala`;
   document.querySelector("#field-soil-components").innerHTML = components.length ? components.map((component) => {
     const norm = number(component.norm_m3ha);
-    const profile = `Tm1[${number(component.tm1) || "—"}] 0–30 ${TEXTURE_LABELS[number(component.tm1)] || "—"} · Tm2[${number(component.tm2) || "—"}] 30–100 ${TEXTURE_LABELS[number(component.tm2)] || "—"} · Tm3[${number(component.tm3) || "—"}] 100–200 ${TEXTURE_LABELS[number(component.tm3)] || "—"}`;
+    const profile = `Tm1 · 0–30 sm: ${TEXTURE_LABELS[number(component.tm1)] || "—"} · Tm2 · 30–100 sm: ${TEXTURE_LABELS[number(component.tm2)] || "—"} · Tm3 · 100–200 sm: ${TEXTURE_LABELS[number(component.tm3)] || "—"}`;
     const groundwater = component.ss ? `${fmtInt.format(number(component.ss) * 1000)} mm` : "—";
     const normText = `${profile} · sizot ${groundwater}${norm ? ` · ${fmtInt.format(norm)} m³/ga` : ""}`;
     return `<div class="soil-component-row"><strong>${fmtDec.format(number(component.area_ha))} ga</strong><span>GMR ${escapeHtml(text(component.gmr, "—"))}</span><span>${component.bonitet === null ? "Bonitet —" : `${fmtInt.format(number(component.bonitet))} ball`}</span><small>${escapeHtml(normText)}</small></div>`;
-  }).join("") : `<div class="soil-component-row"><strong>${fmtDec.format(number(properties.maydoni))} ga</strong><span>GMR ${escapeHtml(text(properties.gmr_mvp))}</span><span>${fmtInt.format(number(properties.bonitet))} ball</span><small>Tm1[${number(properties.Tm1) || "—"}] ${escapeHtml(TEXTURE_LABELS[number(properties.Tm1)] || "—")} · Tm2[${number(properties.Tm2) || "—"}] ${escapeHtml(TEXTURE_LABELS[number(properties.Tm2)] || "—")} · Tm3[${number(properties.Tm3) || "—"}] ${escapeHtml(TEXTURE_LABELS[number(properties.Tm3)] || "—")}</small></div>`;
+  }).join("") : `<div class="soil-component-row"><strong>${fmtDec.format(number(properties.maydoni))} ga</strong><span>GMR ${escapeHtml(text(properties.gmr_mvp))}</span><span>${fmtInt.format(number(properties.bonitet))} ball</span><small>Tm1 · ${escapeHtml(TEXTURE_LABELS[number(properties.Tm1)] || "—")} · Tm2 · ${escapeHtml(TEXTURE_LABELS[number(properties.Tm2)] || "—")} · Tm3 · ${escapeHtml(TEXTURE_LABELS[number(properties.Tm3)] || "—")}</small></div>`;
 }
 
 function selectField(feature, layer) {

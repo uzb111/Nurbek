@@ -456,7 +456,8 @@ body { background:radial-gradient(circle at 80% 0,rgba(179,218,190,.18),transpar
 .gmr-distribution { display:grid; gap:5px; padding:0 17px 15px; }
 .gmr-distribution > div { display:grid; grid-template-columns:47px minmax(55px,1fr) 34px 105px; gap:7px; align-items:center; }.gmr-distribution span { color:#34483e; font-size:7px; font-weight:730; }.gmr-distribution > div > div { height:5px; overflow:hidden; border-radius:99px; background:#edf1ee; }.gmr-distribution i { height:100%; display:block; border-radius:inherit; background:linear-gradient(90deg,#3a9d68,#167447); }.gmr-distribution strong { color:#167447; font-size:7px; text-align:right; }.gmr-distribution small { color:#7b8680; font-size:6.5px; text-align:right; }
 
-.recommendation-overview-card { grid-column:span 2; min-height:360px; }
+.recommendation-primary-card { min-height:380px; }
+.intelligence-water-card { grid-column:span 2; min-height:380px; }
 .recommendation-layout { display:grid; grid-template-columns:210px 1fr; gap:22px; padding:10px 19px 14px; }
 .recommendation-summary { display:grid; align-content:center; padding:17px; border:1px solid #dbe7df; border-radius:9px; background:linear-gradient(145deg,#f7fbf8,#eef7f1); }
 .recommendation-summary strong { color:#126c40; font-size:29px; line-height:1; letter-spacing:-1px; }.recommendation-summary span { margin-top:5px; color:#29483a; font-size:9px; font-weight:720; }.recommendation-summary p { margin:12px 0 0; color:#6d7c74; font-size:8px; line-height:1.55; }
@@ -472,8 +473,8 @@ body { background:radial-gradient(circle at 80% 0,rgba(179,218,190,.18),transpar
 @media (max-width:1280px) {
   .intelligence-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .hydro-card { grid-column:span 2; }
-  .recommendation-overview-card { grid-column:span 1; }
   .recommendation-layout { grid-template-columns:1fr; gap:12px; }
+  .recommendation-primary-card .recommendation-layout { grid-template-columns:160px minmax(0,1fr); }
   .infrastructure-card { min-height:398px; }
 }
 
@@ -492,6 +493,16 @@ body { background:radial-gradient(circle at 80% 0,rgba(179,218,190,.18),transpar
   .concept-kpi div > span { font-size:13px; }
   .concept-card-head h2 { font-size:18px; }
   .concept-main-grid { grid-template-columns:minmax(820px,1.45fr) minmax(560px,1fr); gap:18px; }
+  .recommendation-primary-card { min-height:445px; }
+  .recommendation-primary-card .recommendation-layout { grid-template-columns:245px minmax(0,1fr); gap:26px; padding:15px 24px 18px; }
+  .recommendation-primary-card .recommendation-summary strong { font-size:38px; }
+  .recommendation-primary-card .recommendation-summary span { font-size:12px; }
+  .recommendation-primary-card .recommendation-summary p { font-size:10px; }
+  .recommendation-primary-card .recommendation-bar-heading span,.recommendation-primary-card .recommendation-bar-heading strong { font-size:10px; }
+  .recommendation-primary-card .recommendation-bar-heading small { font-size:9px; }
+  .recommendation-primary-card .recommendation-track { height:8px; }
+  .recommendation-primary-card .assignment-status span,.recommendation-primary-card .assignment-status strong { font-size:10px; }
+  .recommendation-primary-card .assignment-status small { font-size:9px; }
   .concept-bottom-grid,.intelligence-grid { gap:18px; }
   .concept-small-card { min-height:405px; }
   .intelligence-card { min-height:445px; }

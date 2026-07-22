@@ -80,3 +80,8 @@ Dala pasportidagi aylana doimiy chuqurlik belgisi emas. U tanlangan ekin uchun
 `50% × Tm1 + 30% × Tm2 + 20% × Tm3` mexanik tarkib mosligini 0–100 ball
 ko‘rinishida beradi. Dala yoki ekin o‘zgarsa ball qayta hisoblanadi; 0–30,
 30–100 va 100–200 sm manba qiymatlari aylana yonidagi izohda saqlanadi.
+
+Umumiy tahlil ochilganda optimal ekin joylashtirish birinchi analitik blokda
+ko‘rinadi. Suv balansi kengaytirilgan tuman tahliliga ko‘chirilgan. FileGDBdagi
+Tm raqamli domen kodlari hisobda saqlanadi, ammo popup, dala pasporti va split
+oynasida foydalanuvchiga faqat tushunarli mexanik tarkib nomlari chiqariladi.
