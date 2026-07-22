@@ -64,3 +64,14 @@ Mavsumiy suv: `maydon × PNG jadvalidagi norma`. Qisqa muddatli hisob:
 
 `1 mm × 1 ga = 10 m³`. Ekin koeffitsiyenti va sizot hissasi hozircha taxminiy;
 Open-Meteo ob-havosi esa real API javobidir.
+
+## Tavsiya boshqaruvi
+
+`Tavsiya` tugmasi ikki holatli: birinchi bosishda hisoblangan ekinlar xaritaga
+kiritiladi, ikkinchi bosishda faqat tizim tavsiyalari olib tashlanadi. Qo‘lda
+kiritilgan ekinlar saqlanadi.
+
+Tugma oldidagi tanlovda bitta ekin belgilansa, tizim shu ekin uchun umumiy,
+uch qatlamli Tm va tuproq ballari bo‘yicha mos keladigan dalalarnigina to‘ldiradi.
+Qolgan dalalar bo‘sh qoladi. `Barcha ekinlar` tanlovi esa olti ekin bo‘yicha
+umumiy joylashtirish algoritmini ishga tushiradi.

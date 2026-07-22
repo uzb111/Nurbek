@@ -5,9 +5,11 @@ import path from "node:path";
 const edge = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
 const port = 9333;
 const profile = path.join(os.tmpdir(), `agrotahlil-edge-${process.pid}`);
+const browserWidth = Number(process.env.BROWSER_WIDTH) || 1600;
+const browserHeight = Number(process.env.BROWSER_HEIGHT) || 1000;
 const browser = spawn(edge, [
   "--headless=new", "--disable-gpu", "--no-sandbox", `--remote-debugging-port=${port}`,
-  "--window-size=1600,1000", `--user-data-dir=${profile}`, "http://127.0.0.1:5173/dashboard/?view=map",
+  `--window-size=${browserWidth},${browserHeight}`, `--user-data-dir=${profile}`, "http://127.0.0.1:5173/dashboard/?view=map",
 ], { windowsHide: true, stdio: "ignore" });
 
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -103,6 +105,47 @@ try {
   if (Math.abs(recommendation.supplied - recommendation.officialLimit * .88) > 10000) throw new Error("Boshlang‘ich berilgan suv rasmiy limitning 88% iga teng emas");
   if (Math.abs(recommendation.used - recommendation.supplied * .82) > 10000) throw new Error("Boshlang‘ich ishlatilgan suv berilgan suvning 82% iga teng emas");
   if (!recommendation.periodLabel.includes("2025-04-01") || recommendation.realEt <= 0) throw new Error("Tuman balansi rasmiy davr va real ETga o‘tmadi");
+
+  const recommendationToggle = await evaluate(`(() => {
+    const button = document.querySelector("#recommend-crops");
+    const filter = document.querySelector("#recommend-crop-filter");
+    const initialActive = button.classList.contains("is-active") && document.querySelector("#recommend-crops-label").textContent.includes("o‘chirish");
+    applyCropRecommendations();
+    const cleared = fullData.features.filter((feature) => feature.properties.crop_group_mvp).length;
+    filter.value = "cotton";
+    applyCropRecommendations();
+    const filteredFeatures = fullData.features.filter((feature) => feature.properties.crop_group_mvp);
+    const filtered = {
+      assigned: filteredFeatures.length,
+      blank: fullData.features.length - filteredFeatures.length,
+      groups: [...new Set(filteredFeatures.map((feature) => feature.properties.crop_group_mvp))],
+      area: filteredFeatures.reduce((total, feature) => total + Number(feature.properties.maydoni || 0), 0),
+      active: button.classList.contains("is-active"),
+      hint: document.querySelector("#map-hint").textContent,
+    };
+    applyCropRecommendations();
+    const secondClear = fullData.features.filter((feature) => feature.properties.crop_group_mvp).length;
+    filter.value = "";
+    applyCropRecommendations();
+    return {
+      initialActive, cleared, filtered, secondClear,
+      restored: fullData.features.filter((feature) => feature.properties.crop_group_mvp).length,
+      restoredActive: button.classList.contains("is-active"),
+      removedDashboardTitle: !document.body.textContent.includes("Yer, tuproq va ekin salohiyati"),
+    };
+  })()`);
+  if (!recommendationToggle.initialActive || recommendationToggle.cleared !== 0 || recommendationToggle.secondClear !== 0 || recommendationToggle.restored !== 10710 || !recommendationToggle.restoredActive) throw new Error("Tavsiya enable/disable sikli ishlamadi");
+  if (recommendationToggle.filtered.assigned <= 0 || recommendationToggle.filtered.blank <= 0 || recommendationToggle.filtered.groups.join() !== "cotton" || !recommendationToggle.filtered.active || !recommendationToggle.filtered.hint.includes("Qolgan dalalar bo‘sh")) throw new Error("Bitta ekin bo‘yicha tavsiya faqat mos dalalarni ajratmadi");
+  if (!recommendationToggle.removedDashboardTitle) throw new Error("Dashboarddagi olib tashlanishi kerak bo‘lgan salohiyat sarlavhasi qolgan");
+  if (process.env.CAPTURE_MAP_UI) {
+    await evaluate(`document.querySelector(".map-card").scrollIntoView({ block: "start" })`);
+    await delay(400);
+    const screenshot = await command("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+    const screenshotPath = path.join(os.tmpdir(), `agrotahlil-map-${browserWidth}.png`);
+    const { writeFile } = await import("node:fs/promises");
+    await writeFile(screenshotPath, Buffer.from(screenshot.data, "base64"));
+    console.log(JSON.stringify({ mapScreenshot: screenshotPath }, null, 2));
+  }
 
   const routeUi = await evaluate(`(() => {
     const target = fullData.features.find((feature) => feature.properties.water_route && feature.properties.crop_group_mvp && feature.properties.route_depth >= 6);

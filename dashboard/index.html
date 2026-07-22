@@ -6,7 +6,7 @@
     <title>AgroTahlil — Yer va suv tahlili</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2317663b'/%3E%3Cpath d='M16 42C26 39 37 29 45 15c3 19-7 31-23 34M18 47c7-11 14-17 24-23' fill='none' stroke='%23fff' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="./styles.css?v=20260722-tmformula1" />
+    <link rel="stylesheet" href="./styles.css?v=20260722-recommendtoggle1" />
   </head>
   <body>
     <div class="app-shell">
@@ -86,10 +86,10 @@
             </article>
           </section>
 
-          <section class="district-intelligence" aria-labelledby="district-intelligence-title">
+          <section class="district-intelligence" aria-label="Tuman kesimidagi kengaytirilgan tahlil">
             <header class="intelligence-heading">
-              <div><span class="executive-kicker">TUMAN KESIMIDAGI KENGAYTIRILGAN TAHLIL</span><h2 id="district-intelligence-title">Yer, tuproq va ekin salohiyati</h2></div>
-              <span class="intelligence-source"><i></i> GDB · 2025 MONITORING</span>
+              <div><span class="executive-kicker">TUMAN KESIMIDAGI KENGAYTIRILGAN TAHLIL</span></div>
+              <span class="intelligence-source" id="district-intelligence-status"><i></i> GDB · 2025 MONITORING</span>
             </header>
             <div class="intelligence-grid">
               <article class="concept-card intelligence-card soil-score-card">
@@ -276,7 +276,8 @@
               <div class="map-toolbar">
                 <div class="field-search-control"><label for="quick-field-search">Dala qidirish</label><div><input id="quick-field-search" type="search" placeholder="field_id kiriting" autocomplete="off" /><button id="quick-field-find" type="button" title="Dalani topish">⌕</button></div><small id="manual-crop-selected-field">Avval xaritadan dalani tanlang</small></div>
                 <label class="crop-assign-select"><span>Ekin</span><select id="manual-crop-select" aria-label="Tanlangan dala ekini" disabled><option value="">Bo‘sh — ekin kiritilmagan</option><option value="cotton">Paxta</option><option value="alfalfa">Beda</option><option value="maize">Makkajo‘xori</option><option value="vegetables">Sabzavot</option><option value="melons">Poliz</option><option value="winter_grain">Bug‘doy</option></select></label>
-                <button class="recommend-button" id="recommend-crops" type="button" disabled><span>✦</span> Tavsiya<small>Ma’lumotlar yuklanmoqda</small></button>
+                <label class="recommend-filter-select"><span>Tavsiya ekini</span><select id="recommend-crop-filter" aria-label="Tavsiya uchun ekin"><option value="">Barcha ekinlar</option><option value="cotton">Faqat paxta</option><option value="alfalfa">Faqat beda</option><option value="maize">Faqat makkajo‘xori</option><option value="vegetables">Faqat sabzavot</option><option value="melons">Faqat poliz</option><option value="winter_grain">Faqat bug‘doy</option></select></label>
+                <button class="recommend-button" id="recommend-crops" type="button" disabled><span id="recommend-crops-icon">✦</span><b id="recommend-crops-label">Tavsiya</b><small id="recommend-crops-note">Ma’lumotlar yuklanmoqda</small></button>
                 <button class="toolbar-split-button" id="toolbar-start-split" type="button" disabled><span>1</span> Dalani split qilish<small>2 nuqta bilan kesish</small></button>
               </div>
               <div class="map-wrap"><div id="map"></div><div class="map-loading" id="map-loading"><div class="spinner"></div><p>Dala geometriyasi yuklanmoqda…</p></div><div class="map-hint" id="map-hint">Poligon ustiga bosing — dala pasporti ochiladi</div></div>
@@ -348,6 +349,6 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="./app.js?v=20260722-tmformula1"></script>
+    <script src="./app.js?v=20260722-recommendtoggle1"></script>
   </body>
 </html>

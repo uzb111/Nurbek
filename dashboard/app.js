@@ -76,6 +76,8 @@ let fieldComponentPromise = null;
 let fieldComponentIndex = new Map();
 let districtNeedCache = null;
 let districtAnalytics = null;
+let recommendationsActive = false;
+let activeRecommendationFilter = "";
 const networkLoadState = new Set();
 const networkSpatialCache = new Map();
 
@@ -457,7 +459,7 @@ async function loadDistrictAnalytics() {
     if (!response.ok) throw new Error(`Tuman analitikasi: ${response.status}`);
     renderDistrictAnalytics(await response.json());
   } catch (error) {
-    document.querySelector("#district-intelligence-title").textContent = "Tuman analitikasi yuklanmadi";
+    document.querySelector("#district-intelligence-status").textContent = "Tuman analitikasi yuklanmadi";
     console.warn(error);
   }
 }
@@ -881,8 +883,48 @@ function updateRecommendationControl() {
   const button = document.querySelector("#recommend-crops");
   if (!button) return;
   const ready = Boolean(fullData && districtBalance && irrigationRules.length && weatherLoadComplete);
+  const selectedGroup = document.querySelector("#recommend-crop-filter")?.value || "";
+  const selectedLabel = selectedGroup ? CROP_LABELS[selectedGroup] : "barcha ekinlar";
   button.disabled = !ready;
-  button.querySelector("small").textContent = ready ? "Barcha dalaga hisoblash" : "Dala, suv va ob-havo yuklanmoqda";
+  button.classList.toggle("is-active", recommendationsActive);
+  document.querySelector("#recommend-crops-icon").textContent = recommendationsActive ? "+" : "✦";
+  document.querySelector("#recommend-crops-label").textContent = recommendationsActive ? "Tavsiyani o‘chirish" : "Tavsiya";
+  document.querySelector("#recommend-crops-note").textContent = ready
+    ? recommendationsActive ? `${activeRecommendationFilter ? CROP_LABELS[activeRecommendationFilter] : "Barcha ekinlar"} · faol` : `${selectedLabel} uchun hisoblash`
+    : "Dala, suv va ob-havo yuklanmoqda";
+}
+
+function refreshRecommendationView() {
+  geoLayer?.setStyle(styleFor);
+  renderCropLegend();
+  if (splitState.parts.length) renderSplitLayer();
+  if (selectedFeature) {
+    const replacement = selectedFeature.properties.split_status === "scenario" ? splitLayerForField(selectedFeature.properties.field_id) : selectedLayer;
+    if (replacement) selectField(selectedFeature, replacement);
+  }
+  renderDistrictCropAssignment(fullData?.features || []);
+  updateRecommendationControl();
+}
+
+function clearSystemRecommendations() {
+  if (!fullData) return;
+  let cleared = 0;
+  fullData.features.forEach((feature) => {
+    if (feature.properties.crop_mvp_source !== "system_recommendation") return;
+    clearFieldCrop(feature.properties);
+    cleared += 1;
+  });
+  splitState.parts.forEach((feature) => {
+    if (feature.properties.crop_mvp_source === "system_recommendation") clearFieldCrop(feature.properties);
+  });
+  recommendationsActive = false;
+  activeRecommendationFilter = "";
+  refreshRecommendationView();
+  document.querySelector("#map-hint").textContent = `Tizim tavsiyasi o‘chirildi: ${fmtInt.format(cleared)} dala yana bo‘sh. Qo‘lda kiritilgan ekinlar saqlandi.`;
+}
+
+function recommendationCandidateIsSuitable(candidate) {
+  return candidate && candidate.score >= 65 && candidate.mechanicalScore >= 60 && candidate.soilScore >= 50;
 }
 
 function applyCropRecommendations() {
@@ -890,6 +932,11 @@ function applyCropRecommendations() {
     document.querySelector("#map-hint").textContent = "Tavsiya uchun dala, suv balansi va PNG qoidalari yuklanishi kutilmoqda.";
     return;
   }
+  if (recommendationsActive) {
+    clearSystemRecommendations();
+    return;
+  }
+  const requestedGroup = document.querySelector("#recommend-crop-filter")?.value || "";
   const dashboardArea = sum(fullData.features, (feature) => feature.properties.maydoni);
   const sourceCropArea = sum(districtBalance.crop_groups.filter((item) => PNG_CROP_ORDER.includes(item.group)), (item) => item.area_ha);
   const targetAreas = new Map(districtBalance.crop_groups.filter((item) => PNG_CROP_ORDER.includes(item.group)).map((item) => [item.group, dashboardArea * number(item.area_ha) / sourceCropArea]));
@@ -901,36 +948,47 @@ function applyCropRecommendations() {
     if (hardLimit !== undefined) return assigned + area <= hardLimit + 1e-9;
     return assigned + area <= (targetAreas.get(group) || 0) * 1.015;
   };
-  const plans = fullData.features.map((feature) => ({ feature, area: number(feature.properties.maydoni), candidates: cropCandidatesForField(feature.properties) || [] })).filter((plan) => plan.candidates.length);
+  const plans = fullData.features.filter((feature) => feature.properties.crop_mvp_source !== "manual_user").map((feature) => ({ feature, area: number(feature.properties.maydoni), candidates: cropCandidatesForField(feature.properties) || [] })).filter((plan) => plan.candidates.length);
   const pairs = plans.flatMap((plan) => plan.candidates.map((candidate) => ({ plan, candidate }))).sort((first, second) => second.candidate.score - first.candidate.score);
   const assignments = new Map();
-  [...PNG_CROP_ORDER].sort((first, second) => (targetAreas.get(first) || 0) - (targetAreas.get(second) || 0)).forEach((group) => {
-    const target = targetAreas.get(group) || 0;
-    const options = plans.map((plan) => ({ plan, candidate: plan.candidates.find((item) => item.group === group) })).filter((item) => item.candidate && !assignments.has(item.plan.feature));
-    const withinTarget = options.filter((item) => item.plan.area <= (RECOMMENDATION_AREA_LIMIT_HA[group] ?? target * 1.015));
-    const pool = RECOMMENDATION_AREA_LIMIT_HA[group] !== undefined ? withinTarget : (withinTarget.length ? withinTarget : options);
-    const selected = pool.sort((first, second) => second.candidate.score - first.candidate.score || first.plan.area - second.plan.area)[0];
-    if (!selected) return;
-    assignments.set(selected.plan.feature, selected.candidate);
-    assignedAreas.set(group, selected.plan.area);
-  });
-  pairs.forEach(({ plan, candidate }) => {
-    if (assignments.has(plan.feature)) return;
-    if (!canAssign(candidate.group, plan.area)) return;
-    assignments.set(plan.feature, candidate);
-    assignedAreas.set(candidate.group, (assignedAreas.get(candidate.group) || 0) + plan.area);
-  });
-  plans.filter((plan) => !assignments.has(plan.feature)).forEach((plan) => {
-    const eligible = plan.candidates.filter((candidate) => RECOMMENDATION_AREA_LIMIT_HA[candidate.group] === undefined || canAssign(candidate.group, plan.area));
-    const candidate = [...eligible].sort((first, second) => {
-      const firstLoad = (assignedAreas.get(first.group) || 0) / Math.max(targetAreas.get(first.group) || 1, 1);
-      const secondLoad = (assignedAreas.get(second.group) || 0) / Math.max(targetAreas.get(second.group) || 1, 1);
-      return (second.score - secondLoad * 35) - (first.score - firstLoad * 35);
-    })[0];
-    if (!candidate) return;
-    assignments.set(plan.feature, candidate);
-    assignedAreas.set(candidate.group, (assignedAreas.get(candidate.group) || 0) + plan.area);
-  });
+  if (requestedGroup) {
+    plans.map((plan) => ({ plan, candidate: plan.candidates.find((item) => item.group === requestedGroup) }))
+      .filter((item) => recommendationCandidateIsSuitable(item.candidate))
+      .sort((first, second) => second.candidate.score - first.candidate.score || second.candidate.mechanicalScore - first.candidate.mechanicalScore || first.plan.area - second.plan.area)
+      .forEach(({ plan, candidate }) => {
+        if (!canAssign(requestedGroup, plan.area)) return;
+        assignments.set(plan.feature, candidate);
+        assignedAreas.set(requestedGroup, (assignedAreas.get(requestedGroup) || 0) + plan.area);
+      });
+  } else {
+    [...PNG_CROP_ORDER].sort((first, second) => (targetAreas.get(first) || 0) - (targetAreas.get(second) || 0)).forEach((group) => {
+      const target = targetAreas.get(group) || 0;
+      const options = plans.map((plan) => ({ plan, candidate: plan.candidates.find((item) => item.group === group) })).filter((item) => item.candidate && !assignments.has(item.plan.feature));
+      const withinTarget = options.filter((item) => item.plan.area <= (RECOMMENDATION_AREA_LIMIT_HA[group] ?? target * 1.015));
+      const pool = RECOMMENDATION_AREA_LIMIT_HA[group] !== undefined ? withinTarget : (withinTarget.length ? withinTarget : options);
+      const selected = pool.sort((first, second) => second.candidate.score - first.candidate.score || first.plan.area - second.plan.area)[0];
+      if (!selected) return;
+      assignments.set(selected.plan.feature, selected.candidate);
+      assignedAreas.set(group, selected.plan.area);
+    });
+    pairs.forEach(({ plan, candidate }) => {
+      if (assignments.has(plan.feature)) return;
+      if (!canAssign(candidate.group, plan.area)) return;
+      assignments.set(plan.feature, candidate);
+      assignedAreas.set(candidate.group, (assignedAreas.get(candidate.group) || 0) + plan.area);
+    });
+    plans.filter((plan) => !assignments.has(plan.feature)).forEach((plan) => {
+      const eligible = plan.candidates.filter((candidate) => RECOMMENDATION_AREA_LIMIT_HA[candidate.group] === undefined || canAssign(candidate.group, plan.area));
+      const candidate = [...eligible].sort((first, second) => {
+        const firstLoad = (assignedAreas.get(first.group) || 0) / Math.max(targetAreas.get(first.group) || 1, 1);
+        const secondLoad = (assignedAreas.get(second.group) || 0) / Math.max(targetAreas.get(second.group) || 1, 1);
+        return (second.score - secondLoad * 35) - (first.score - firstLoad * 35);
+      })[0];
+      if (!candidate) return;
+      assignments.set(plan.feature, candidate);
+      assignedAreas.set(candidate.group, (assignedAreas.get(candidate.group) || 0) + plan.area);
+    });
+  }
   const counts = new Map();
   assignments.forEach((recommendation, feature) => {
     applyManualCrop(feature.properties, recommendation.group);
@@ -940,23 +998,22 @@ function applyCropRecommendations() {
     counts.set(recommendation.group, (counts.get(recommendation.group) || 0) + 1);
   });
   splitState.parts.forEach((feature) => {
-    const recommendation = (cropCandidatesForField(feature.properties) || []).find((candidate) => candidate.group !== "alfalfa");
-    if (!recommendation) return;
+    if (feature.properties.crop_mvp_source === "manual_user") return;
+    const candidates = cropCandidatesForField(feature.properties) || [];
+    const recommendation = requestedGroup ? candidates.find((candidate) => candidate.group === requestedGroup && recommendationCandidateIsSuitable(candidate)) : candidates.find((candidate) => candidate.group !== "alfalfa");
+    if (!recommendation) { clearFieldCrop(feature.properties); return; }
     feature.properties.crop_group_mvp = recommendation.group;
     applySplitCropRule(feature);
     feature.properties.crop_mvp_source = "system_recommendation";
     feature.properties.crop_mvp_confidence = recommendation.score;
   });
-  geoLayer?.setStyle(styleFor);
-  renderCropLegend();
-  if (splitState.parts.length) renderSplitLayer();
-  if (selectedFeature) {
-    const replacement = selectedFeature.properties.split_status === "scenario" ? splitLayerForField(selectedFeature.properties.field_id) : selectedLayer;
-    if (replacement) selectField(selectedFeature, replacement);
-  }
-  const summary = PNG_CROP_ORDER.map((group) => `${CROP_LABELS[group]} ${fmtInt.format(counts.get(group) || 0)} dala / ${fmtDec.format(assignedAreas.get(group) || 0)} ga`).join(" · ");
-  document.querySelector("#map-hint").textContent = `Tavsiya tayyor: ${fmtInt.format(assignments.size)} dala, ${counts.size}/6 ekin joylashtirildi. ${summary}.`;
-  renderDistrictCropAssignment(fullData.features);
+  recommendationsActive = assignments.size > 0;
+  activeRecommendationFilter = requestedGroup;
+  refreshRecommendationView();
+  const summary = requestedGroup
+    ? `${CROP_LABELS[requestedGroup]}: ${fmtInt.format(counts.get(requestedGroup) || 0)} dala / ${fmtDec.format(assignedAreas.get(requestedGroup) || 0)} ga. Qolgan dalalar bo‘sh qoldi.`
+    : PNG_CROP_ORDER.map((group) => `${CROP_LABELS[group]} ${fmtInt.format(counts.get(group) || 0)} dala / ${fmtDec.format(assignedAreas.get(group) || 0)} ga`).join(" · ");
+  document.querySelector("#map-hint").textContent = `Tavsiya tayyor: ${fmtInt.format(assignments.size)} dala. ${summary} Tugmani yana bossangiz tavsiya o‘chadi.`;
 }
 
 function renderFieldDecision(properties) {
@@ -1972,6 +2029,14 @@ document.querySelector("#cancel-split").addEventListener("click", () => cancelSp
 document.querySelector("#export-split").addEventListener("click", exportSplitGeoJSON);
 document.querySelector("#manual-crop-select").addEventListener("change", assignCropToSelectedField);
 document.querySelector("#recommend-crops").addEventListener("click", applyCropRecommendations);
+document.querySelector("#recommend-crop-filter").addEventListener("change", (event) => {
+  if (recommendationsActive) clearSystemRecommendations();
+  updateRecommendationControl();
+  const group = event.target.value;
+  document.querySelector("#map-hint").textContent = group
+    ? `${CROP_LABELS[group]} tanlandi. Tavsiya bosilganda faqat eng mos ${CROP_LABELS[group].toLocaleLowerCase()} dalalari belgilanadi, qolganlari bo‘sh qoladi.`
+    : "Barcha ekinlar tanlandi. Tavsiya bosilganda 6 ekin optimal joylashtiriladi.";
+});
 document.querySelector("#quick-field-find").addEventListener("click", findFieldFromToolbar);
 document.querySelector("#quick-field-search").addEventListener("keydown", (event) => {
   if (event.key === "Enter") findFieldFromToolbar();
