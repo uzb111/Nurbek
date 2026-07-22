@@ -35,6 +35,10 @@ Bonitet tuproq poligoni maydoniga vaznlanadi. `Tm1`, `Tm2`, `Tm3` mos ravishda
 sizot chuqurligi metrdan millimetrga o‘tkaziladi; 15 metrdan katta aniq kiritish
 xatolari yig‘ma statistikadan chiqarilib, soni auditda saqlanadi.
 
+Tm kod nomlari taxmin emas, FileGDB coded-value domenidan olinadi: 1 qumoqli,
+2 yengil qumoqli, 3 o‘rta qumoqli, 4 og‘ir qumoqli, 5 qumli, 6 loyli,
+7 20 sm dan keyin shag‘alli o‘rta qumoqli, 8 og‘ir va o‘rta qumoqli.
+
 Bo‘z/cho‘l zona atributi foydalanuvchi interfeysi va ekin tavsiyasi hisobidan
 chiqarilgan. Mexanik tarkib skori uch qatlamdan 50% / 30% / 20% vaznda olinadi.
 Bir GMR–ekin uchun PNGda ikki satr uchrasa, suvni kam baholamaslik uchun yuqori

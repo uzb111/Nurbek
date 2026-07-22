@@ -97,6 +97,9 @@ if (!close(summary.totals.area_ha, fieldArea, 0.01)) errors.push("Dashboard summ
 if (districtAnalytics.field_area.fields !== fields.length || !close(districtAnalytics.field_area.total_ha, fieldArea, 0.1)) errors.push("Tuman analitikasidagi dala qamrovi merged qatlamga mos emas");
 if (districtAnalytics.bonitet.average < districtAnalytics.bonitet.minimum || districtAnalytics.bonitet.average > districtAnalytics.bonitet.maximum) errors.push("Bonitet o‘rtachasi minimum–maksimum oralig‘ida emas");
 if (districtAnalytics.soil_profile.length !== 3 || districtAnalytics.soil_profile.some((layer) => !close(sum(layer.distribution, (item) => item.share_pct), 100, 0.2))) errors.push("0–30, 30–100 yoki 100–200 sm tuproq taqsimoti 100% ga yig‘ilmadi");
+const textureDomain = { 1: "Qumoqli", 2: "Yengil qumoqli", 3: "O‘rta qumoqli", 4: "Og‘ir qumoqli", 5: "Qumli", 6: "Loyli", 7: "O‘rta qumoqli (20 sm dan keyin shag‘al)", 8: "Og‘ir va o‘rta qumoqli" };
+const textureLabelErrors = districtAnalytics.soil_profile.flatMap((layer) => layer.distribution).filter((item) => textureDomain[item.code] !== item.label);
+if (textureLabelErrors.length) errors.push(`${textureLabelErrors.length} tuproq mexanik tarkib kodi FileGDB domen nomiga mos emas`);
 if (districtAnalytics.groundwater.minimum_mm > districtAnalytics.groundwater.average_mm || districtAnalytics.groundwater.average_mm > districtAnalytics.groundwater.maximum_mm) errors.push("Sizot suvi mm statistikasi mantiqiy tartibda emas");
 if (districtAnalytics.infrastructure.canals.features !== canals.length || districtAnalytics.infrastructure.drains.features !== drains.length) errors.push("Kanal yoki zovur soni GDB GeoJSON qamroviga mos emas");
 if (!close(sum(districtAnalytics.recommendation.crops, (item) => item.area_ha), districtAnalytics.recommendation.total_area_ha, 0.5)) errors.push("Ekin tavsiyasi maydonlari jami tuman maydoniga teng emas");

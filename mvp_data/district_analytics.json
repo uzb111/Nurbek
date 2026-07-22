@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-22T05:00:07.185Z",
+  "generated_at": "2026-07-22T05:23:47.226Z",
   "scope": "Kasbi tumani, tuman kodi 1803",
   "sources": [
     "fields_merged_manual.geojson",
@@ -28,44 +28,44 @@
       "depth": "0–30 sm",
       "dominant": {
         "code": 3,
-        "label": "Yengil qumoq",
+        "label": "O‘rta qumoqli",
         "area_ha": 24416.7,
         "share_pct": 45.2
       },
       "distribution": [
         {
           "code": 3,
-          "label": "Yengil qumoq",
+          "label": "O‘rta qumoqli",
           "area_ha": 24416.7,
           "share_pct": 45.2
         },
         {
           "code": 4,
-          "label": "O‘rta qumoq",
+          "label": "Og‘ir qumoqli",
           "area_ha": 20340,
           "share_pct": 37.6
         },
         {
           "code": 2,
-          "label": "Qumloq",
+          "label": "Yengil qumoqli",
           "area_ha": 4369.4,
           "share_pct": 8.1
         },
         {
           "code": 5,
-          "label": "Og‘ir qumoq",
+          "label": "Qumli",
           "area_ha": 2721.8,
           "share_pct": 5
         },
         {
           "code": 6,
-          "label": "Gilli",
+          "label": "Loyli",
           "area_ha": 1955.6,
           "share_pct": 3.6
         },
         {
           "code": 1,
-          "label": "Qumli",
+          "label": "Qumoqli",
           "area_ha": 249.2,
           "share_pct": 0.5
         }
@@ -76,44 +76,44 @@
       "depth": "30–100 sm",
       "dominant": {
         "code": 3,
-        "label": "Yengil qumoq",
+        "label": "O‘rta qumoqli",
         "area_ha": 22006.7,
         "share_pct": 40.7
       },
       "distribution": [
         {
           "code": 3,
-          "label": "Yengil qumoq",
+          "label": "O‘rta qumoqli",
           "area_ha": 22006.7,
           "share_pct": 40.7
         },
         {
           "code": 4,
-          "label": "O‘rta qumoq",
+          "label": "Og‘ir qumoqli",
           "area_ha": 19652.8,
           "share_pct": 36.4
         },
         {
           "code": 2,
-          "label": "Qumloq",
+          "label": "Yengil qumoqli",
           "area_ha": 9072.5,
           "share_pct": 16.8
         },
         {
           "code": 6,
-          "label": "Gilli",
+          "label": "Loyli",
           "area_ha": 1912.2,
           "share_pct": 3.5
         },
         {
           "code": 5,
-          "label": "Og‘ir qumoq",
+          "label": "Qumli",
           "area_ha": 991.2,
           "share_pct": 1.8
         },
         {
           "code": 1,
-          "label": "Qumli",
+          "label": "Qumoqli",
           "area_ha": 417.2,
           "share_pct": 0.8
         }
@@ -124,44 +124,44 @@
       "depth": "100–200 sm",
       "dominant": {
         "code": 4,
-        "label": "O‘rta qumoq",
+        "label": "Og‘ir qumoqli",
         "area_ha": 15045.2,
         "share_pct": 27.8
       },
       "distribution": [
         {
           "code": 4,
-          "label": "O‘rta qumoq",
+          "label": "Og‘ir qumoqli",
           "area_ha": 15045.2,
           "share_pct": 27.8
         },
         {
           "code": 2,
-          "label": "Qumloq",
+          "label": "Yengil qumoqli",
           "area_ha": 12127.8,
           "share_pct": 22.4
         },
         {
           "code": 3,
-          "label": "Yengil qumoq",
+          "label": "O‘rta qumoqli",
           "area_ha": 11761.9,
           "share_pct": 21.8
         },
         {
           "code": 5,
-          "label": "Og‘ir qumoq",
+          "label": "Qumli",
           "area_ha": 8568.9,
           "share_pct": 15.9
         },
         {
           "code": 1,
-          "label": "Qumli",
+          "label": "Qumoqli",
           "area_ha": 5931.2,
           "share_pct": 11
         },
         {
           "code": 6,
-          "label": "Gilli",
+          "label": "Loyli",
           "area_ha": 617.6,
           "share_pct": 1.1
         }
@@ -258,15 +258,15 @@
       {
         "group": "winter_grain",
         "label": "Bug‘doy",
-        "fields": 5826,
-        "area_ha": 34882.7,
+        "fields": 5837,
+        "area_ha": 34882,
         "color": "#1c7ed6",
         "share_pct": 56.33
       },
       {
         "group": "cotton",
         "label": "Paxta",
-        "fields": 4014,
+        "fields": 4047,
         "area_ha": 22566.5,
         "color": "#168951",
         "share_pct": 36.44
@@ -274,7 +274,7 @@
       {
         "group": "maize",
         "label": "Makkajo‘xori",
-        "fields": 777,
+        "fields": 747,
         "area_ha": 4081.5,
         "color": "#f0ad22",
         "share_pct": 6.59
@@ -282,15 +282,15 @@
       {
         "group": "melons",
         "label": "Poliz",
-        "fields": 59,
-        "area_ha": 339,
+        "fields": 37,
+        "area_ha": 339.8,
         "color": "#ef7f33",
         "share_pct": 0.55
       },
       {
         "group": "vegetables",
         "label": "Sabzavot",
-        "fields": 25,
+        "fields": 34,
         "area_ha": 47.3,
         "color": "#e84d72",
         "share_pct": 0.08
@@ -298,7 +298,7 @@
       {
         "group": "alfalfa",
         "label": "Beda",
-        "fields": 9,
+        "fields": 8,
         "area_ha": 5,
         "color": "#7c62cc",
         "share_pct": 0.01

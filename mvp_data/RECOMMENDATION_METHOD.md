@@ -11,6 +11,8 @@ Tizim faqat quyidagi 6 ekindan foydalanadi: Paxta, Beda, Makkajo‘xori, Sabzavo
 
 Suv normasi dala ichidagi barcha GMR/tuproq qismlari uchun PNG qoidalari bo‘yicha alohida hisoblanadi. Bo‘z/cho‘l zonasi modeldan chiqarilgan. Bir GMR–ekin uchun PNGda bir nechta satr bo‘lsa, suv talabini kam baholamaslik uchun eng yuqori mavsumiy norma olinadi. Real ET mavjud bo‘lsa suv skorining 30% qismi real ET bilan, 70% qismi limit va tarmoq samaradorligi bilan baholanadi.
 
+`Tm1/Tm2/Tm3` qiymatlari FileGDB domen kodlaridir: 1 qumoqli, 2 yengil qumoqli, 3 o‘rta qumoqli, 4 og‘ir qumoqli, 5 qumli, 6 loyli, 7 shag‘alli maxsus sinf, 8 og‘ir va o‘rta qumoqli. Kodlar ayniqsa 5–8 oralig‘ida son jihatidan yaqin bo‘lsa ham mexanik jihatdan yaqin deb hisoblanmaydi.
+
 `Norm_coverage = mavjud_m3ga / PNG_norm_m3ga × 100`
 
 `ET_coverage = mavjud_m3ga / (real_ET_mm × 10) × 100`

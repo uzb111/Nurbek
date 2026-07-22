@@ -69,6 +69,9 @@ try {
       crops: [...new Set(fullData.features.map((feature) => feature.properties.crop_group_mvp).filter(Boolean))].sort(),
       cropCounts: Object.fromEntries(PNG_CROP_ORDER.map((group) => [group, fullData.features.filter((feature) => feature.properties.crop_group_mvp === group).length])),
       cropAreas: Object.fromEntries(PNG_CROP_ORDER.map((group) => [group, fullData.features.filter((feature) => feature.properties.crop_group_mvp === group).reduce((total, feature) => total + Number(feature.properties.maydoni || 0), 0)])),
+      snapshotCounts: Object.fromEntries(districtAnalytics.recommendation.crops.map((item) => [item.group, item.fields])),
+      snapshotAreas: Object.fromEntries(districtAnalytics.recommendation.crops.map((item) => [item.group, item.area_ha])),
+      textureDomain: TEXTURE_LABELS,
       denominator: currentDistrictNeed(),
       sourceTotal,
       officialLimit: Number(document.querySelector("#input-water-limit").value) * 1e6,
@@ -89,6 +92,10 @@ try {
   })()`);
   console.log(JSON.stringify({ checkpoint: "recommendation", recommendation }, null, 2));
   if (recommendation.assigned !== 10710 || recommendation.crops.length !== 6) throw new Error("Tavsiya barcha dalaga 6 ekinni joylashtirmadi");
+  if (recommendation.textureDomain[1] !== "qumoqli" || recommendation.textureDomain[5] !== "qumli" || recommendation.textureDomain[8] !== "og‘ir va o‘rta qumoqli") throw new Error("Tm coded-value nomlari FileGDB domeniga mos emas");
+  for (const group of recommendation.crops) {
+    if (recommendation.cropCounts[group] !== recommendation.snapshotCounts[group] || Math.abs(recommendation.cropAreas[group] - recommendation.snapshotAreas[group]) > .11) throw new Error(`${group} tavsiya snapshoti joriy algoritmga mos emas`);
+  }
   if (recommendation.cropAreas.alfalfa > 5.000001) throw new Error(`Beda tavsiyasi 5 ga limitdan oshdi: ${recommendation.cropAreas.alfalfa}`);
   if (recommendation.assignmentLabel.replace(/\D/g, "") !== "1071010710" || recommendation.districtAnalytics.soilLayers !== 3 || recommendation.districtAnalytics.gmrRows !== 7 || recommendation.districtAnalytics.recommendationRows !== 6) throw new Error("Tuman analitikasi yoki ekin kiritilganlik holati to‘liq render bo‘lmadi");
   if (recommendation.denominator.mode !== "dynamic") throw new Error("Tavsiya tugagach tuman talabi dinamik bo‘lmadi");

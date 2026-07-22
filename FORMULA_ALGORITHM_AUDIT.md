@@ -104,6 +104,8 @@ Real ET mavjud bo‘lsa:
 
 `Tm1`, `Tm2`, `Tm3` mos ravishda 0–30, 30–100 va 100–200 sm tuproq qatlamidir. Bo‘z/cho‘l zona atributi hisobdan chiqarildi. GMR–ekin uchun normativ jadvalda takror satr bo‘lsa, konservativ eng yuqori mavsumiy norma ishlatiladi.
 
+Tm qiymatlari oddiy tartib raqami emas, FileGDB coded-value domenidir: `1=Qumoqli`, `2=Yengil qumoqli`, `3=O‘rta qumoqli`, `4=Og‘ir qumoqli`, `5=Qumli`, `6=Loyli`, `7=O‘rta qumoqli (20 sm dan keyin shag‘al)`, `8=Og‘ir va o‘rta qumoqli`. Shu sabab 5–8 kodlari orasidagi arifmetik masofa mexanik o‘xshashlik deb olinmaydi.
+
 Muhim tuzatish: eski kod `Real_ET / norma` nisbatini ball qilgan va ET talabi kattalashgan sari ballni oshirgan. Endi mavjud suv real ET talabiga bo‘linadi.
 
 Barcha dalaga `Tavsiya` bosilganda individual maksimum bilan cheklanilmaydi. Tuman manbasidagi ekin maydoni ulushlari 6 ekinga qayta normallashtiriladi, yuqori balli dala–ekin juftliklari maqsad maydonigacha joylashtiriladi, qolganlari score va target load bilan muvozanatlanadi.

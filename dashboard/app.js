@@ -10,7 +10,7 @@ const OFFICIAL_LIMIT_URL = "../mvp_data/official_water_limit_2025.json";
 const IRRIGATION_RULES_URL = "../mvp_data/config/irrigation_norms.csv";
 const ACTUAL_ET_URL = "../mvp_data/actual_et_by_field.json";
 const ACTUAL_ET_DASHBOARD_URL = "../mvp_data/actual_et_dashboard.json";
-const DISTRICT_ANALYTICS_URL = "../mvp_data/district_analytics.json";
+const DISTRICT_ANALYTICS_URL = "../mvp_data/district_analytics.json?v=20260722-tmdomain1";
 const FIELD_COMPONENTS_URL = "../mvp_data/geojson/field_components.geojson";
 const NETWORK_SOURCES = {
   kanal: { url: "../mvp_data/geojson/kanal.geojson", label: "Kanallar — 1 615", color: "#16b8e8", weight: 2.8 },
@@ -39,12 +39,16 @@ const CROP_LABELS = { cotton: "Paxta", winter_grain: "Bug‘doy", alfalfa: "Beda
 const PNG_CROP_ORDER = ["cotton", "alfalfa", "maize", "vegetables", "melons", "winter_grain"];
 const RECOMMENDATION_AREA_LIMIT_HA = { alfalfa: 5 };
 const CROP_COLORS = { cotton: "#00c96b", alfalfa: "#7c4dff", maize: "#ffd000", vegetables: "#ff3d71", melons: "#ff8a00", winter_grain: "#00a3ff" };
-const TEXTURE_LABELS = { 1: "qumli", 2: "qumloq", 3: "yengil qumoq", 4: "o‘rta qumoq", 5: "og‘ir qumoq", 6: "gilli" };
+// Exact coded-value domain stored in the source FileGDB (Tuproq.Tm1/Tm2/Tm3).
+const TEXTURE_LABELS = {
+  1: "qumoqli", 2: "yengil qumoqli", 3: "o‘rta qumoqli", 4: "og‘ir qumoqli",
+  5: "qumli", 6: "loyli", 7: "o‘rta qumoqli, 20 sm dan keyin shag‘al", 8: "og‘ir va o‘rta qumoqli",
+};
 const CROP_PROFILES = {
-  cotton: { minBonitet: 55, textures: [3, 4, 5], heat: 92 }, winter_grain: { minBonitet: 40, textures: [2, 3, 4, 5], heat: 84 },
-  alfalfa: { minBonitet: 50, textures: [3, 4, 5], heat: 76 }, maize: { minBonitet: 55, textures: [3, 4, 5], heat: 80 },
-  melons: { minBonitet: 45, textures: [2, 3, 4], heat: 92 },
-  vegetables: { minBonitet: 65, textures: [3, 4], heat: 62 },
+  cotton: { minBonitet: 55, textures: [2, 3, 4, 8], heat: 92 }, winter_grain: { minBonitet: 40, textures: [1, 2, 3, 4, 8], heat: 84 },
+  alfalfa: { minBonitet: 50, textures: [2, 3, 4, 8], heat: 76 }, maize: { minBonitet: 55, textures: [2, 3, 4, 8], heat: 80 },
+  melons: { minBonitet: 45, textures: [1, 2, 3], heat: 92 },
+  vegetables: { minBonitet: 65, textures: [2, 3], heat: 62 },
 };
 
 let dashboardSummary = null;
@@ -420,7 +424,7 @@ function renderDistrictAnalytics(data) {
   document.querySelector("#district-field-max").textContent = `${fmtDec.format(data.field_area.maximum_ha)} ga`;
   document.querySelector("#district-bonitet-note").textContent = `${fmtInt.format(bonitet.source_polygons)} tuproq poligoni va ${fmtInt.format(bonitet.covered_area_ha)} ga qamrov bo‘yicha maydon-vaznli baho.`;
 
-  const textureColors = { 1: "#d5b46d", 2: "#e0a755", 3: "#65b97b", 4: "#258b63", 5: "#7a725f", 6: "#5e6170" };
+  const textureColors = { 1: "#d5b46d", 2: "#e0a755", 3: "#65b97b", 4: "#258b63", 5: "#e3c98e", 6: "#5e6170", 7: "#9a8870", 8: "#397b60" };
   document.querySelector("#district-soil-profile").innerHTML = data.soil_profile.map((layer) => `<div class="soil-depth-row"><div class="soil-depth-heading"><strong>${escapeHtml(layer.depth)}</strong><span>${escapeHtml(layer.dominant.label)} · ${fmtDec.format(layer.dominant.share_pct)}%</span></div><div class="soil-profile-track">${layer.distribution.map((item) => `<i style="width:${item.share_pct}%;background:${textureColors[item.code]}" title="${escapeHtml(item.label)}: ${fmtDec.format(item.share_pct)}%"></i>`).join("")}</div><p>${layer.distribution.map((item) => `${escapeHtml(item.label)} ${fmtDec.format(item.share_pct)}%`).join(" · ")}</p></div>`).join("");
   const textureCodes = [...new Map(data.soil_profile.flatMap((layer) => layer.distribution).map((item) => [item.code, item])).values()].sort((first, second) => first.code - second.code);
   document.querySelector("#district-texture-key").innerHTML = textureCodes.map((item) => `<span><i style="background:${textureColors[item.code]}"></i>${escapeHtml(item.label)}</span>`).join("");
@@ -789,8 +793,18 @@ function fieldWaterAnalysis(properties) {
 function textureScore(texture, preferred) {
   if (!texture) return 60;
   if (preferred.includes(texture)) return 100;
-  const distance = Math.min(...preferred.map((value) => Math.abs(value - texture)));
-  return distance === 1 ? 72 : 45;
+  // FileGDB codes 1–4 form the loam gradient. Codes 5–8 are categorical,
+  // therefore their numeric distance must never be treated as soil similarity.
+  if (texture >= 1 && texture <= 4) {
+    const loamPreferences = preferred.filter((value) => value >= 1 && value <= 4);
+    const distance = loamPreferences.length ? Math.min(...loamPreferences.map((value) => Math.abs(value - texture))) : Infinity;
+    return distance === 1 ? 72 : 45;
+  }
+  if (texture === 5) return preferred.includes(1) ? 72 : 45; // qumli ↔ qumoqli
+  if (texture === 6) return preferred.includes(4) ? 72 : 45; // loyli ↔ og‘ir qumoqli
+  if (texture === 7) return preferred.some((value) => value === 2 || value === 3) ? 55 : 40;
+  if (texture === 8) return preferred.some((value) => value === 3 || value === 4) ? 90 : 50;
+  return 45;
 }
 
 function soilSuitability(bonitet, minimum) {
@@ -821,7 +835,7 @@ function cropCandidatesForField(properties) {
   const availableM3Ha = currentDistrictUsedM3() / districtBalance.field_totals.area_ha * routeEfficiency;
   const hot = currentWeather ? weatherStats(currentWeather).maxTemperature >= 40 : false;
   return PNG_CROP_ORDER.map((group) => {
-    const profile = CROP_PROFILES[group] || { minBonitet: 50, textures: [3, 4], heat: 75 };
+    const profile = CROP_PROFILES[group] || { minBonitet: 50, textures: [2, 3], heat: 75 };
     const calculated = components.map((component) => {
       const match = nearestComponentRule(component, group);
       return { component, norm: number(match?.rule?.seasonal_norm_m3ha), matched: Boolean(match?.rule) };

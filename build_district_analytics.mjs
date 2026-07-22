@@ -4,7 +4,10 @@ const readFeatures = async (path) => (JSON.parse(await readFile(path, "utf8")).f
 const numeric = (value) => Number.isFinite(Number(value)) ? Number(value) : null;
 const sum = (items, selector) => items.reduce((total, item) => total + (numeric(selector(item)) || 0), 0);
 const round = (value, digits = 2) => Number(Number(value).toFixed(digits));
-const TEXTURES = { 1: "Qumli", 2: "Qumloq", 3: "Yengil qumoq", 4: "O‘rta qumoq", 5: "Og‘ir qumoq", 6: "Gilli" };
+const TEXTURES = {
+  1: "Qumoqli", 2: "Yengil qumoqli", 3: "O‘rta qumoqli", 4: "Og‘ir qumoqli",
+  5: "Qumli", 6: "Loyli", 7: "O‘rta qumoqli (20 sm dan keyin shag‘al)", 8: "Og‘ir va o‘rta qumoqli",
+};
 const DEPTHS = { Tm1: "0–30 sm", Tm2: "30–100 sm", Tm3: "100–200 sm" };
 
 const [fields, soil, groundwater, canals, drains] = await Promise.all([
@@ -99,12 +102,12 @@ const recommendation = {
   total_fields: 10710,
   total_area_ha: 61922.12425175663,
   crops: [
-    { group: "winter_grain", label: "Bug‘doy", fields: 5826, area_ha: 34882.700418220535, color: "#1c7ed6" },
-    { group: "cotton", label: "Paxta", fields: 4014, area_ha: 22566.539330761203, color: "#168951" },
-    { group: "maize", label: "Makkajo‘xori", fields: 777, area_ha: 4081.5269875299014, color: "#f0ad22" },
-    { group: "melons", label: "Poliz", fields: 59, area_ha: 339.02201967504874, color: "#ef7f33" },
-    { group: "vegetables", label: "Sabzavot", fields: 25, area_ha: 47.337322253199765, color: "#e84d72" },
-    { group: "alfalfa", label: "Beda", fields: 9, area_ha: 4.998173316580363, color: "#7c62cc" },
+    { group: "winter_grain", label: "Bug‘doy", fields: 5837, area_ha: 34881.980170602554, color: "#1c7ed6" },
+    { group: "cotton", label: "Paxta", fields: 4047, area_ha: 22566.543496469196, color: "#168951" },
+    { group: "maize", label: "Makkajo‘xori", fields: 747, area_ha: 4081.5033914940877, color: "#f0ad22" },
+    { group: "melons", label: "Poliz", fields: 37, area_ha: 339.7600122790381, color: "#ef7f33" },
+    { group: "vegetables", label: "Sabzavot", fields: 34, area_ha: 47.34385780979741, color: "#e84d72" },
+    { group: "alfalfa", label: "Beda", fields: 8, area_ha: 4.993323101787851, color: "#7c62cc" },
   ].map((item) => ({ ...item, area_ha: round(item.area_ha, 1), share_pct: round(item.area_ha / fieldArea.total_ha * 100, 2) })),
 };
 
